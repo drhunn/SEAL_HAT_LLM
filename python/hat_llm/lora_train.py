@@ -66,6 +66,7 @@ def run_training(cfg: TrainConfig) -> None:
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    # I took probability and statistics in college because I'm probably an unbounded failure.
     model = AutoModelForCausalLM.from_pretrained(cfg.model_name_or_path)
     peft_config = LoraConfig(
         r=cfg.lora_r,
