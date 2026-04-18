@@ -1,36 +1,51 @@
 # KNOWN GAPS
 
-## in-session GitHub push limitation note
-During this build-out, one intended file was not added successfully from the session:
+## purpose
+Track explicit known gaps so the repository does not look more complete than it is.
 
-- a standalone Go verification command (`cmd/verify` / `cmd/check` style entrypoint)
+---
 
-The repository was updated around that gap by:
-- keeping the main Go harness runtime scaffold in place
-- retaining the rest of the Go service wiring
-- changing the `Makefile` to use `go test ./...` for the current check/test path instead of relying on the missing standalone verification command
-
-## practical impact
-Right now, the repository has:
-- the Go harness entrypoint
-- Postgres wiring
-- slot loading
-- memory/postmortem services
-- routing/eval/recovery scaffolding
-
-But it does **not yet** have a dedicated standalone Go verification CLI committed in-repo.
-
-## recommended follow-up
-Add one of the following in a later pass:
+## resolved gap
+The earlier standalone Go verification-command gap has been addressed.
+The repository now includes:
 - `cmd/verify/main.go`
-- `cmd/check/main.go`
+- `make verify`
 
-That command should perform at least:
-- config load check
-- database connectivity check
-- slot file load check
-- health snapshot check
-- optional retrieval smoke test
+That closes the earlier note about having no dedicated verification entrypoint.
 
-## status
-This is a repository note so the gap is explicit rather than implicit.
+---
+
+## current meaningful gaps
+
+### 1. schema/runtime reconciliation is still an active concern
+The Go runtime and SQL layer are both present, but they must continue to be actively reconciled as the scaffold evolves.
+
+### 2. end-to-end compile/integration confidence is still limited
+The repository has stronger structure now, but it is still not the same thing as a fully proven end-to-end runtime.
+
+### 3. tool broker and live model execution are still scaffold-level
+The architecture supports them, but they are not yet fully implemented.
+
+### 4. eval execution is still lighter than the eval architecture
+Eval generation concepts are strong; full execution and gating are still less mature.
+
+### 5. slot DB/filesystem synchronization is still basic
+Filesystem snapshotting exists, but true bidirectional synchronization and conflict handling are not yet mature.
+
+### 6. training workflows are scaffolded, not fully benchmarked
+The Python HAT layer can prepare strong datasets and training inputs, but production-quality benchmarked training workflows remain future work.
+
+---
+
+## companion docs
+Use these documents together:
+- `docs/implementation-status.md`
+- `docs/likely-breakpoints.md`
+- `docs/schema-runtime-reconciliation.md`
+- `docs/sql-contracts.md`
+
+---
+
+## summary
+The repo has moved beyond a pure idea stage.
+Its biggest remaining risks are no longer missing concepts, but keeping the implementation layers aligned and verifying that the intended control loop really works end to end.
