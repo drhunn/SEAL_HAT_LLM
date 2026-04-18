@@ -8,7 +8,7 @@ This document defines the full target architecture for `SEAL_HAT_LLM`.
 **MM-ELLS** means **Multiple-Model Expert Large Language Systems**.
 
 The system is a governed multi-model architecture built around:
-- a **frozen parent generalist**
+- a **governed parent generalist** with a frozen constitutional core and tightly controlled operational adaptation
 - bounded **specialists**
 - a **harness** that governs operational adaptation
 - **Postgres + pgvector** as the durable memory plane
@@ -16,6 +16,7 @@ The system is a governed multi-model architecture built around:
 - **postmortem- and eval-driven improvement**
 - **Harness-Aware Training (HAT)** so models naturally cooperate with this operating model
 - a governed **model-lineage strategy** built around a canonical 30B root plus distilled and pruned descendants
+- an explicit **context-window strategy** with large parent context, tighter specialist context, and overflow summarized into Postgres
 
 This is the reference architecture for implementation, review, and future expansion.
 
@@ -23,9 +24,9 @@ This is the reference architecture for implementation, review, and future expans
 
 ## 2. architectural principles
 
-### 2.1 frozen parent principle
-The parent remains frozen or near-frozen relative to the specialists.
-Its job is not to continuously rewrite itself.
+### 2.1 governed parent principle
+The parent keeps a frozen constitutional core and may have tightly controlled operational adaptation relative to the specialists.
+Its job is not to continuously rewrite itself without bounds.
 Its job is to:
 - classify
 - route
@@ -77,6 +78,20 @@ The system maintains one canonical 30B root lineage model.
 Specialists and smaller experts are normally produced by governed distillation from that lineage.
 Pruning is a size and latency optimization step that follows distillation when justified.
 
+### 2.9 context-budget principle
+Context windows are for active reasoning, not for carrying endless raw transcript history.
+The system should use explicit budget allocation, summarize overflow, and offload durable continuity into Postgres-backed memory.
+
+Default ceilings:
+- parent max context: `2,000,000` tokens
+- specialist max context: `256,000` tokens
+
+Overflow handling should prefer:
+- compression
+- deduplication
+- summary projection
+- Postgres offload with provenance and retrieval metadata
+
 ---
 
 ## 3. system overview
@@ -92,7 +107,7 @@ This plane is responsible for:
 - forwarding work into routing/orchestration
 
 ### 3.2 parent governance plane
-The parent governance plane is the frozen parent model plus any explicit parent-governed logic.
+The parent governance plane is the governed parent model plus any explicit parent-governed logic.
 Responsibilities:
 - classify tasks
 - select specialists
@@ -101,6 +116,7 @@ Responsibilities:
 - approve specialist lifecycle transitions
 - own final arbitration
 - own model-family creation, distillation, pruning, activation, and retirement policy
+- act as the top-level context-budget governor
 
 ### 3.3 harness plane
 The harness plane is the operational reviewer and control loop.
@@ -112,6 +128,7 @@ Responsibilities:
 - recommend degraded/suspended/retired transitions
 - enforce recovery workflows
 - verify descendant-model evidence before activation
+- verify context-overflow offload discipline over time
 
 ### 3.4 specialist execution plane
 This is the family of specialists.
@@ -132,6 +149,7 @@ Responsibilities:
 - auditability
 - coarse-to-fine retrieval
 - summary projection into `MEMORY.md`
+- overflow-summary storage from parent and specialist context pressure
 
 ### 3.6 eval plane
 The eval plane ensures the system learns in a controlled way.
@@ -143,6 +161,7 @@ Responsibilities:
 - degraded-recovery verification
 - specialist suitability testing
 - descendant-model fitness checks after distillation and pruning
+- context-budget discipline checks where useful
 
 ### 3.7 training plane
 The training plane prepares HAT corpora and later fine-tuning pipelines.
@@ -152,6 +171,7 @@ Responsibilities:
 - negative governance-pressure data generation
 - export to HF/LoRA-compatible formats
 - distillation corpora for governed descendant creation
+- later support for context-budget-aware training examples
 
 ---
 
@@ -163,7 +183,7 @@ Provides tasks, goals, and external direction.
 Does not directly grant runtime authority by natural-language request alone.
 
 ### 4.2 parent generalist
-The frozen governor and generalist.
+The governed governor and generalist.
 Responsibilities:
 - final routing
 - governance
@@ -175,6 +195,7 @@ Responsibilities:
 - model-lineage planning
 - distillation and pruning policy selection
 - descendant activation approval after evidence review
+- top-level context budgeting and overflow discipline
 
 The parent must understand how distillation and pruning work at the planning, policy, and approval level.
 Execution should remain tool-mediated, specialist-assisted, and harness-verified.
@@ -188,6 +209,7 @@ Responsibilities:
 - escalate appropriately
 - generate postmortems on meaningful failure
 - propose operational changes only through governed channels
+- keep within the 256k-class context budget and offload overflow through governed summaries
 
 ### 4.4 harness
 The operational review and enforcement layer.
@@ -201,6 +223,7 @@ Responsibilities:
 - narrow routing exposure
 - recommend lifecycle changes
 - verify descendant creation artifacts and eval evidence
+- enforce context-overflow and summary-offload discipline
 
 ### 4.5 runtime
 The explicit process-level implementation.
@@ -210,6 +233,7 @@ Responsibilities:
 - enforce tool permission boundaries
 - query Postgres
 - orchestrate calls among parent, specialists, harness, and evaluators
+- manage context budgeting and overflow offload workflows
 
 ### 4.6 database
 Persistent durable store and retrieval substrate.
@@ -221,13 +245,14 @@ Responsibilities:
 - slot projections
 - lifecycle metadata
 - lineage metadata for descendant models
+- summarized overflow continuity with provenance
 
 ---
 
 ## 5. parent architecture
 
 ### 5.1 role
-The parent is a router, orchestrator, arbitrator, constitutional governor, and model-family governor.
+The parent is a router, orchestrator, arbitrator, constitutional governor, model-family governor, and context-budget governor.
 It is not intended to be the main continuously adapting expert in every lane.
 
 ### 5.2 parent duties
@@ -241,6 +266,7 @@ The parent must:
 - decide whether distillation should start from the canonical root or an existing specialist
 - decide whether pruning is justified after distillation
 - require artifact and eval evidence before descendant activation
+- govern context pressure at the system level and prefer summary-offload over transcript bloat
 
 ### 5.3 parent constraints
 The parent must not:
@@ -250,10 +276,11 @@ The parent must not:
 - silently widen a specialist’s lane
 - approve descendant activation without evidence
 - directly perform uncontrolled self-redefinition under the guise of distillation or pruning
+- rely on giant context windows as a substitute for structured memory
 
 ### 5.4 parent state
 The parent is conceptually always available, but its behavior may still be evaluated.
-Parent quality is monitored through routing audits, arbitration outcomes, parent-specific postmortems, and model-family governance decisions.
+Parent quality is monitored through routing audits, arbitration outcomes, parent-specific postmortems, model-family governance decisions, and context-budget discipline.
 
 ### 5.5 parent distillation and pruning knowledge
 The parent should know:
@@ -267,6 +294,22 @@ The parent should know:
 
 The parent should not be the unchecked executor of model surgery.
 It should be the policy and approval authority over that process.
+
+### 5.6 parent context strategy
+The parent may use up to `2,000,000` tokens as a hard ceiling.
+That large window exists to support:
+- routing
+- orchestration
+- arbitration
+- governance
+- cross-specialist synthesis
+- large evidence handling
+
+But even the parent should prefer:
+- budget discipline
+- deduplicated working state
+- summary-offload to Postgres
+- retrieval-first continuity instead of hauling giant raw histories forward by default
 
 ---
 
@@ -333,6 +376,11 @@ A specialist may not:
 - self-activate
 - self-widen lane
 - self-grant authority
+
+### 6.6 specialist context strategy
+Specialists have a hard ceiling of `256,000` tokens.
+They should use tighter budgets than the parent and more aggressively summarize and offload overflow into Postgres-backed continuity.
+A specialist should not depend on giant rolling raw histories when retrieval and durable summaries can carry continuity more cleanly.
 
 ---
 
@@ -437,6 +485,7 @@ Examples:
 - eval_case
 - self_edit_candidate
 - model_lineage_artifact
+- context_overflow_summary
 
 ### 8.3 memory status lifecycle
 - staged
@@ -470,6 +519,16 @@ It is not the complete evidence base.
 Postmortems are stored as first-class records in the memory plane.
 This makes them searchable, reusable for training, and convertible into evals.
 
+### 8.8 context overflow in memory
+When context grows too large, older working context should be summarized and offloaded into Postgres as structured continuity records with:
+- summary text
+- provenance
+- task/session linkage
+- importance
+- confidence
+- retrieval tags
+- modality metadata where relevant
+
 ---
 
 ## 9. retrieval architecture
@@ -495,6 +554,7 @@ Regions provide broad topical routing such as:
 - postmortems
 - eval patterns
 - model-lineage strategy
+- context overflow summaries
 
 ### 9.3 cluster layer
 Clusters refine within regions such as:
@@ -504,6 +564,7 @@ Clusters refine within regions such as:
 - postmortem patterns
 - routing postmortems
 - distillation/pruning policies
+- overflow-summary retrieval patterns
 
 ### 9.4 record layer
 Exact durable records are ranked using:
@@ -520,6 +581,7 @@ The goal is governed retrieval that:
 - prefers active records
 - penalizes contradicted/deprecated content
 - supports memory projection and reasoning
+- restores summarized continuity when raw context has been offloaded
 
 ---
 
@@ -541,6 +603,7 @@ That remains the parent.
 - degraded/suspended recommendations
 - parent review escalation
 - descendant-model evidence verification
+- context-budget and summary-offload discipline
 
 ### 10.3 harness workflow
 1. signal arrives
@@ -583,6 +646,7 @@ Primary incident classes include:
 - slot integrity failure
 - specialist suitability failure
 - model-lineage governance failure
+- context-budget failure
 
 ### 11.2 postmortem requirement
 Meaningful failures require postmortems.
@@ -592,6 +656,7 @@ This applies to:
 - routing behavior
 - failed self-improvement attempts
 - failed descendant-creation or promotion attempts
+- repeated context-budget and overflow-discipline failures
 
 ### 11.3 postmortem outputs
 A postmortem may generate:
@@ -603,6 +668,7 @@ A postmortem may generate:
 - suspension recommendation
 - parent review item
 - lineage policy refinement item
+- context-budget policy refinement item
 
 ### 11.4 recovery levels
 - observe
@@ -643,6 +709,7 @@ Evals ensure the system improves in a testable way.
 - degraded recovery
 - specialist suitability
 - model-lineage governance
+- context-budget discipline
 
 ### 12.3 eval sources
 - postmortems
@@ -652,6 +719,7 @@ Evals ensure the system improves in a testable way.
 - governance reviews
 - specialist creation workflows
 - descendant creation workflows
+- context-overflow handling reviews
 
 ### 12.4 eval suites
 - activation suite
@@ -661,6 +729,7 @@ Evals ensure the system improves in a testable way.
 - recovery suite
 - specialist core suite
 - model-lineage suite
+- context-budget suite
 
 ### 12.5 eval output role in lifecycle
 Eval failures can drive:
@@ -672,6 +741,7 @@ Eval failures can drive:
 - suspension review
 - retirement review
 - descendant rejection or rollback
+- context-budget policy changes
 
 ---
 
@@ -783,6 +853,7 @@ The Go runtime is the explicit operational control plane for:
 - run retrieval smoke tests
 - stage candidates and invoke governed workflows
 - provide a standalone verification path
+- later manage context-overflow summarization and Postgres offload
 
 ### 15.4 future runtime responsibilities
 - actual LLM execution orchestration
@@ -792,6 +863,7 @@ The Go runtime is the explicit operational control plane for:
 - eval execution
 - specialist arbitration orchestration
 - descendant-creation workflow support for parent-governed distillation and pruning
+- context-budget-aware orchestration for parent and specialists
 
 ---
 
@@ -849,6 +921,13 @@ The Python training layer should eventually support the parent-governed model fa
 - governance-preserving negative examples
 - LoRA or adapter training inputs
 - evidence artifacts used in descendant promotion review
+
+### 16.7 context-budget-aware training support
+The Python training layer should later support:
+- overflow-summary examples
+- retrieval-first continuity examples
+- specialist 256k budget discipline examples
+- parent large-window but non-hoarding examples
 
 ---
 
@@ -910,6 +989,8 @@ The model should:
 - SQL contracts
 - schema/runtime reconciliation
 - lineage strategy
+- context-window strategy
+- multimodal architecture
 
 ### 18.3 specialist layout
 Each specialist directory contains slot files that mirror the control model.
@@ -921,6 +1002,7 @@ Each specialist directory contains slot files that mirror the control model.
 - seed
 - verify
 - queries
+- multimodal memory extensions
 
 ---
 
@@ -964,6 +1046,7 @@ The system should log and audit:
 - slot version changes
 - self-edit candidate creation and approval/rejection
 - descendant creation artifacts and promotion decisions
+- context-overflow summarization and restoration decisions
 
 ### 20.2 audit storage
 Audit data should live in structured DB tables wherever possible, with filesystem/docs as human-readable companions rather than sole sources of truth.
@@ -1003,6 +1086,7 @@ Examples of current gaps:
 - mature eval execution engine
 - production-grade training orchestration and benchmarking
 - mature descendant creation and lineage registry implementation
+- concrete runtime implementation of context-overflow summary offload
 
 These are implementation gaps, not architectural omissions.
 
@@ -1022,11 +1106,13 @@ A practical roadmap from current scaffold to fuller system is:
 - implement slot sync validation
 - implement richer lifecycle transitions
 - implement routing persistence and policy reads
+- begin concrete overflow-summary offload implementation
 
 ### phase 3
 - integrate actual model serving calls
 - implement parent/specialist orchestration loop
 - implement eval execution and recovery loops
+- implement explicit context-budget-aware orchestration
 
 ### phase 4
 - mature Python HAT generation
@@ -1045,6 +1131,7 @@ A practical roadmap from current scaffold to fuller system is:
 The architecture is being respected if all of the following remain true:
 - parent remains constitutional governor
 - parent remains model-family governor for distillation and pruning policy
+- parent remains the top-level context-budget governor
 - first specialist remains CS/software engineering tool-development specialist
 - specialists do not self-authorize constitutional changes
 - runtime authority is not replaced by markdown claims
@@ -1053,6 +1140,7 @@ The architecture is being respected if all of the following remain true:
 - evals remain tied to failures and activation/recovery gates
 - recovery remains evidence-driven
 - descendant creation remains lineage-aware and evidence-gated
+- context overflow is summarized and offloaded instead of blindly dragged forward
 - HAT training reinforces, rather than bypasses, runtime governance
 
 ---
@@ -1063,8 +1151,9 @@ This architecture is designed to solve a specific problem:
 How do you let a family of models improve continuously **without** letting them dissolve their own boundaries?
 
 The answer in this system is:
-- keep the parent frozen and governing
+- keep the parent governed and stable at the constitutional core
 - let the parent understand distillation and pruning at the policy and approval level
+- let the parent govern context budgets instead of hoarding transcript history
 - let specialists adapt only in bounded channels
 - make memory external and durable
 - force contradictions into review
