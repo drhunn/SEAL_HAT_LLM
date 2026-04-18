@@ -3,10 +3,9 @@
 ## purpose
 `HAT` in this repository means **Harness-Aware Training**.
 
-The Python scaffold under `python/hat_llm/` is a starter implementation for preparing and validating supervised fine-tuning data for a harness-aware model.
+The Python scaffold under `python/hat_llm/` is a preparation and training-support layer for harness-aware models inside `SEAL_HAT_LLM`.
 
-It is not a full trainer for every model stack.
-It is a structured preparation layer that teaches a model to operate inside this repository's control model.
+It is still scaffold-level, but it now goes beyond simple dataset preparation. It supports governed dataset construction, optional Postgres-backed corpus ingestion, governance-pressure negative example generation, direct dataset exports, and a LoRA training script scaffold.
 
 ---
 
@@ -20,6 +19,7 @@ The HAT LLM scaffold is designed to teach:
 - postmortem discipline
 - state-aware behavior for shadow, active, degraded, and suspended modes
 - operational self-improvement only through bounded channels
+- governance preservation across descendant-model creation workflows
 
 ---
 
@@ -54,12 +54,19 @@ Creates train/validation/test splits and emits HF-style and LoRA-style record sh
 ### `python/hat_llm/exporters.py`
 Writes JSON and JSONL outputs for downstream pipelines.
 
+### `python/hat_llm/hf_dataset.py`
+Builds direct `datasets.DatasetDict` exports when HF dataset extras are installed.
+
+### `python/hat_llm/negative_examples.py`
+Generates governance-pressure negative examples, including examples derived from postmortems and eval cases.
+
 ### `python/hat_llm/trainer.py`
 A lightweight training-data builder and validator scaffold.
 It can now:
 - validate tasks against harness-aware policy
 - load slot bundles from the repo
 - convert corpus records into governed task examples
+- generate governance-pressure tasks
 - build supervised examples for export
 
 ### `python/hat_llm/examples.py`
@@ -69,9 +76,17 @@ Provides starter examples for:
 - constitutional refusal
 - postmortem generation
 
-### `python/hat_llm/cli.py`
-CLI for exporting starter JSONL training data, HF-style JSON, and LoRA-style JSONL.
-It can also read real slot files from the repo and optionally ingest Postgres postmortems/evals.
+### `python/hat_llm/build_dataset.py`
+Canonical dataset-building entrypoint.
+Builds SFT JSONL, split manifests, HF-style JSON exports, LoRA-style JSONL exports, and optional `DatasetDict` outputs.
+
+### `python/hat_llm/lora_train.py`
+Hugging Face + PEFT LoRA training scaffold.
+This is still a framework-dependent training script scaffold rather than a fully benchmarked production training pipeline.
+
+### `python/hat_llm/cli.md`
+Preserved archival copy of the older CLI implementation.
+Not the live executable entrypoint.
 
 ---
 
@@ -83,9 +98,12 @@ It currently supports:
 - enforcing basic harness-aware policy checks before export
 - loading real specialist slot files from the repo
 - optionally ingesting postmortems and eval cases from Postgres
-- generating starter JSONL for later SFT pipelines
+- generating governance-pressure negative examples
+- generating SFT JSONL for later fine-tuning pipelines
 - generating HF-style JSON exports and LoRA-style message JSONL exports
 - generating simple train/validation/test splits
+- exporting optional `datasets.DatasetDict` artifacts
+- providing a LoRA-training script scaffold for later use
 
 ---
 
@@ -99,34 +117,54 @@ With Postgres ingestion:
 With dataset-oriented extras:
 - `pip install -e .[hf]`
 
-With both:
+With training extras:
+- `pip install -e .[training]`
+
+With the fuller local scaffold:
 - `pip install -e .[full]`
 
 ---
 
-## example CLI usage
-Starter export from the repository slot files:
+## canonical entrypoints
+Dataset-building entrypoint:
+- `hat-llm`
+- or `python -m hat_llm.build_dataset`
+
+Training entrypoint:
+- `hat-llm-train`
+- or `python -m hat_llm.lora_train`
+
+The old `cli.py` implementation has been retired as a live entrypoint and preserved in Markdown form.
+
+---
+
+## example dataset usage
+Starter export from repository slot files:
 - `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01`
 
 Export with Postgres-backed postmortem/eval ingestion:
 - `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01 --dsn postgres://user:pass@localhost:5432/llm_harness`
 
-Outputs:
+Export with governance-pressure negatives and direct HF dataset output:
+- `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01 --dsn postgres://user:pass@localhost:5432/llm_harness --add-governance-negatives --dataset-dir artifacts/hat_dataset`
+
+Outputs can include:
 - SFT JSONL
 - HF-style JSON
 - LoRA-style JSONL
 - validation and split report JSON
+- optional `datasets.DatasetDict`
 
 ---
 
 ## what it does not yet do
 It does not yet include:
-- LoRA training code tied to a specific framework
-- tokenizer-specific packing
-- distributed training
-- RLHF / DPO / GRPO loops
+- benchmarked production training orchestration
+- tokenizer-specific packing optimization
+- distributed training orchestration
+- mature RLHF / DPO / GRPO loops
 - direct model serving
-- benchmark harness execution
+- multimodal HAT corpus generation
 
 Those can be added later on top of the current dataset and policy scaffold.
 
@@ -141,13 +179,14 @@ That means the model should learn:
 - to refuse constitutional self-edit
 - to generate postmortems after meaningful failure
 - to distinguish operational proposals from approved durable changes
+- to preserve governance during descendant-model creation and promotion
 
 ---
 
 ## next steps
 Strong next steps for the Python HAT layer are:
-- add a Hugging Face `datasets.Dataset` exporter
-- add LoRA trainer wiring for a chosen framework
-- generate negative governance-pressure examples automatically from postmortems
-- add state-conditioned corpus balancing for shadow, active, degraded, and suspended modes
-- connect eval categories directly into training mix generation
+- multimodal HAT corpus generation
+- richer context-budget-aware dataset generation
+- stronger lineage-governance examples for parent and specialist roles
+- benchmarked LoRA training recipes
+- direct integration of eval categories into training mix generation
