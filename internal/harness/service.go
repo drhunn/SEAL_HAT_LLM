@@ -6,32 +6,48 @@ import (
 	"log/slog"
 
 	"github.com/drhunn/LLM-plus-harness/internal/config"
+	"github.com/drhunn/LLM-plus-harness/internal/evals"
+	"github.com/drhunn/LLM-plus-harness/internal/lifecycle"
 	"github.com/drhunn/LLM-plus-harness/internal/memory"
+	workflow "github.com/drhunn/LLM-plus-harness/internal/harness/workflows"
 	"github.com/drhunn/LLM-plus-harness/internal/postmortem"
 )
 
 type Incident struct {
-	TaskSummary            string
-	ExpectedBehavior       string
-	ActualBehavior         string
-	WhatWentWrong          string
-	FailureClassification  []string
-	RootCause              string
-	Preventable            bool
-	RequiresPostmortem     bool
-	RequiresImmediateHalt  bool
-	RequiresParentReview   bool
+	TaskSummary           string
+	ExpectedBehavior      string
+	ActualBehavior        string
+	WhatWentWrong         string
+	FailureClassification []string
+	RootCause             string
+	Preventable           bool
+	RequiresPostmortem    bool
+	RequiresImmediateHalt bool
+	RequiresParentReview  bool
+	HighImpact            bool
+	Repeated              bool
 }
 
 type Service struct {
 	store      *memory.PostgresStore
 	postmortem *postmortem.Service
+	evals      *evals.Service
+	lifecycle  *lifecycle.Service
+	planner    workflow.RecoveryPlanner
 	logger     *slog.Logger
 	cfg        *config.AppConfig
 }
 
-func NewService(store *memory.PostgresStore, pm *postmortem.Service, logger *slog.Logger, cfg *config.AppConfig) *Service {
-	return &Service{store: store, postmortem: pm, logger: logger, cfg: cfg}
+func NewService(store *memory.PostgresStore, pm *postmortem.Service, evalService *evals.Service, lifecycleService *lifecycle.Service, planner workflow.RecoveryPlanner, logger *slog.Logger, cfg *config.AppConfig) *Service {
+	return &Service{
+		store:      store,
+		postmortem: pm,
+		evals:      evalService,
+		lifecycle:  lifecycleService,
+		planner:    planner,
+		logger:     logger,
+		cfg:        cfg,
+	}
 }
 
 func (s *Service) StartupChecks(ctx context.Context, specialistID, namespace string) error {
@@ -69,9 +85,36 @@ func (s *Service) HandleIncident(ctx context.Context, namespace, specialistID st
 		}
 	}
 
+	if incident.Preventable && s.evals != nil {
+		_, err := s.evals.StageCandidate(ctx, namespace, specialistID, evals.Candidate{
+			Category:                 canonicalEvalCategory(incident),
+			Title:                    "Regression for: " + incident.TaskSummary,
+			TargetScope:              "single specialist",
+			TestStyle:                "regression",
+			ImpactLevel:              impactLevel(incident.HighImpact),
+			ExpectedOutcome:          "must pass",
+			SourceReason:             incident.WhatWentWrong,
+			PromptInput:              incident.TaskSummary,
+			ExpectedBehavior:         incident.ExpectedBehavior,
+			ExpectedOutputOrCriteria: incident.ExpectedBehavior,
+		})
+		if err != nil {
+			s.logger.Warn("stage eval candidate failed", "specialist_id", specialistID, "err", err)
+		}
+	}
+
 	if s.cfg.Harness.AutoUpdateHealth {
 		if err := s.store.UpdateSpecialistHealth(ctx, specialistID); err != nil {
 			s.logger.Warn("health update failed after incident", "specialist_id", specialistID, "err", err)
+		}
+	}
+
+	plan := s.planner.Plan(ctx, specialistID, primaryClass(incident), incident.Repeated, incident.HighImpact)
+	s.logger.Info("recovery plan generated", "specialist_id", specialistID, "level", string(plan.Level), "actions", plan.Actions)
+
+	if incident.HighImpact && s.lifecycle != nil {
+		if err := s.lifecycle.SetStatus(ctx, specialistID, "degraded", "automatic degraded recommendation after high-impact incident"); err != nil {
+			s.logger.Warn("failed to set degraded status", "specialist_id", specialistID, "err", err)
 		}
 	}
 
@@ -80,4 +123,39 @@ func (s *Service) HandleIncident(ctx context.Context, namespace, specialistID st
 	}
 
 	return nil
+}
+
+func primaryClass(incident Incident) string {
+	if len(incident.FailureClassification) == 0 {
+		return "reasoning failure"
+	}
+	return incident.FailureClassification[0]
+}
+
+func canonicalEvalCategory(incident Incident) string {
+	switch primaryClass(incident) {
+	case "scope failure":
+		return "scope_adherence"
+	case "routing failure":
+		return "single_specialist_routing"
+	case "memory failure":
+		return "memory_first_behavior"
+	case "tool failure":
+		return "tool_selection_quality"
+	case "validation failure":
+		return "durable_change_validation"
+	case "governance failure":
+		return "approval_gate_compliance"
+	case "postmortem compliance failure":
+		return "postmortem_triggering"
+	default:
+		return "in_lane_synthesis_quality"
+	}
+}
+
+func impactLevel(high bool) string {
+	if high {
+		return "high"
+	}
+	return "medium"
 }
