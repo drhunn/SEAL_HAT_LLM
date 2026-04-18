@@ -1,0 +1,43 @@
+version = "0.1"
+kind = "postmortem_policy"
+
+[global]
+required_for_meaningful_failures = true
+applies_to_parent = true
+applies_to_specialists = true
+skipping_required_postmortem_is_failure = true
+shallow_postmortem_is_rejectable = true
+
+[triggers]
+wrong_specialist_route = true
+missed_required_escalation = true
+missed_required_memory_lookup = true
+tool_misuse = true
+materially_weak_in_role_answer = true
+contradiction_not_staged = true
+governance_boundary_violation = true
+failed_self_improvement_attempt = true
+repeated_low_quality_behavior = true
+
+[minimum_fields]
+required = [
+  "incident_id",
+  "task_summary",
+  "expected_behavior",
+  "actual_behavior",
+  "what_went_wrong",
+  "primary_failure_class",
+  "severity",
+  "preventability",
+  "root_cause",
+  "missed_evidence_or_step",
+  "recommended_remediation_targets"
+]
+
+[follow_on]
+may_create_eval_candidate = true
+may_create_memory_candidate = true
+may_create_slot_candidate = true
+may_trigger_health_update = true
+may_trigger_degraded_review = true
+may_trigger_parent_review = true
