@@ -3,6 +3,10 @@
 ## purpose
 Define the model-family strategy for `SEAL_HAT_LLM`.
 
+`SEAL_HAT_LLM` implements the **MM-ELLS** architecture.
+
+**MM-ELLS** means **Multiple-Model Expert Large Language Systems**.
+
 This document answers a core architectural question:
 
 How should the system maintain one strong general baseline while also creating smaller, faster, bounded specialists?
@@ -10,6 +14,7 @@ How should the system maintain one strong general baseline while also creating s
 The answer in this repository is:
 - keep a canonical 30B ancestor model
 - keep the parent/governor close to that ancestor and mostly frozen
+- let the parent understand distillation and pruning at the policy, planning, and approval level
 - distill specialist descendants from the canonical 30B lineage
 - prune only after distillation, not instead of distillation
 - track every descendant with explicit lineage, recipes, and eval results
@@ -37,8 +42,18 @@ The parent may use:
 - a tightly controlled control adapter
 - harness-aware operational tuning
 - stronger routing/arbitration/governance behavior
+- model-family planning and approval knowledge
 
 But the parent should not drift so far that it stops feeling like the root lineage model.
+
+The parent must know how distillation and pruning work well enough to:
+- decide whether a descendant should be created
+- decide the right lineage source
+- decide target size and compression policy
+- require correct evidence and evals before activation
+
+The parent should not be the unchecked executor of model surgery.
+Execution remains tool-mediated, specialist-assisted, and harness-verified.
 
 ### 3. specialist creation policy
 Specialists should normally be created by:
@@ -108,12 +123,14 @@ Role:
 - orchestrator
 - arbitrator
 - constitutional governor
+- model-family governor
 
 Rules:
 - stays close to root
 - frozen or near-frozen base
 - improvements should mostly live in tightly controlled adapters or governed overlays
 - must remain the stable root-of-trust model family member
+- must understand descendant creation policy without becoming an uncontrolled self-modifier
 
 ### layer 3: specialist descendants
 **Distilled Specialist Models**
@@ -157,6 +174,13 @@ Rules:
 8. shadow deployment
 9. activation or rejection
 
+### governance overlay
+At each stage, parent and harness roles should be clear:
+- **parent** decides whether descendant creation is justified
+- **tool-development specialist** helps execute the technical workflow
+- **harness** verifies artifacts and evidence
+- **parent** approves activation, continued shadowing, or rejection
+
 ### key rule
 **Distill first, prune second.**
 
@@ -182,7 +206,7 @@ It is a default design pattern.
 
 ## parent-specific policy
 
-### what may improve
+### what the parent may improve
 The parent may improve in:
 - routing quality
 - orchestration sequencing
@@ -192,6 +216,16 @@ The parent may improve in:
 - confidence calibration
 - degraded-mode takeover behavior
 - governance interpretation consistency
+- model-family planning quality
+
+### what the parent should know
+The parent should know:
+- when to create a descendant at all
+- whether to distill from the canonical root or a specialist
+- when pruning is actually justified
+- what eval suites are required before activation
+- what artifacts must be recorded before promotion
+- when a descendant should stay in shadow, be activated, be rolled back, or be retired
 
 ### what should remain tightly locked
 The parent should not directly self-rewrite:
@@ -207,9 +241,11 @@ Use:
 - frozen parent base
 - controlled parent adapter
 - harness-gated promotion
+- parent-governed lineage policy
 
 Not:
 - freeform parent self-redefinition
+- unchecked parent execution of distillation/pruning on itself or descendants
 
 ---
 
@@ -237,6 +273,14 @@ Specialists should inherit from the canonical 30B lineage:
 - postmortem discipline
 - runtime authority interpretation
 
+### first specialist responsibility
+The first specialist, focused on CS/software engineering and tool development, is the natural execution assistant for:
+- corpus preparation
+- distillation workflow execution
+- pruning workflow execution
+- artifact measurement
+- latency/quality tradeoff reporting
+
 ---
 
 ## pruning policy
@@ -260,6 +304,14 @@ Preferred sequence:
 2. prune for efficiency
 3. re-evaluate
 4. optionally lightly recover with additional tuning
+
+### approval rule
+Pruned descendants should not be activated unless:
+- lineage is recorded
+- pruning recipe is recorded
+- post-pruning evals ran
+- governance behavior remains acceptable
+- parent approval is explicit
 
 ---
 
@@ -297,6 +349,7 @@ Track:
 - fallback quality
 - governance preservation
 - parent postmortem quality
+- model-family governance quality
 
 ### specialist model
 Track:
@@ -346,6 +399,8 @@ Do not:
 - use pruning as a substitute for proper distillation
 - lose the lineage record for descendants
 - allow descendants to drift from core governance behavior
+- let the parent approve descendant activation without evidence
+- let the parent perform uncontrolled model surgery directly
 
 ---
 
@@ -369,6 +424,7 @@ The default model-family strategy for `SEAL_HAT_LLM` is:
 
 - keep one canonical 30B root
 - keep the parent close to that root and mostly frozen
+- let the parent understand distillation and pruning at the policy, planning, and approval level
 - distill specialists from the root lineage
 - prune only after distillation when useful
 - derive micro-experts from specialists when justified
