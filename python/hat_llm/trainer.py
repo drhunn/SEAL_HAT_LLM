@@ -3,6 +3,8 @@ from dataclasses import asdict
 from .config import HatConfig
 from .dataset import DatasetBuilder
 from .policy import HarnessPolicy
+from .postgres_loader import CorpusRecord
+from .repo_loader import RepositoryLoader
 from .types import RuntimeState, SlotBundle, TaskExample, TrainingExample
 
 
@@ -34,6 +36,26 @@ class HatTrainer:
             reports.append({
                 "task_id": task.task_id,
                 "warnings": warnings,
-                "metadata": asdict(example.metadata) if hasattr(example.metadata, "__dataclass_fields__") else example.metadata,
+                "metadata": example.metadata,
             })
         return examples, reports
+
+    def load_slots_from_repo(self, repo_root: str, specialist_id: str) -> SlotBundle:
+        return RepositoryLoader(repo_root).load_specialist_slots(specialist_id)
+
+    def tasks_from_corpus(self, records: list[CorpusRecord], prefix: str = "corpus") -> list[TaskExample]:
+        tasks: list[TaskExample] = []
+        for idx, record in enumerate(records, start=1):
+            tasks.append(
+                TaskExample(
+                    task_id=f"{prefix}-{idx}",
+                    user_request=f"Summarize and learn the governed lesson from this {record.kind}:\n{record.text}",
+                    expected_behavior="extract the bounded, policy-compatible lesson without inventing authority",
+                    expected_response=f"Lesson from {record.kind} '{record.title}': preserve governance boundaries, use evidence, and avoid unsupported changes.",
+                    failure_class=record.metadata.get("category") if isinstance(record.metadata, dict) else None,
+                    requires_escalation=False,
+                    requires_postmortem=record.kind == "postmortem",
+                    tags=[record.kind],
+                )
+            )
+        return tasks
