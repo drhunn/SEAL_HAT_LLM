@@ -1,0 +1,48 @@
+version = "0.1"
+kind = "memory_schema"
+backend = "postgres_pgvector"
+vector_dimension = 1536
+distance_metric = "cosine"
+
+[truth_model]
+authoritative_kinds = ["fact", "decision", "evidence", "pointer"]
+logs_are_not_truth = true
+promotion_required_for_durable_truth = true
+
+[lifecycle_states]
+allowed = ["staged", "active", "contradicted", "deprecated", "rejected", "archived", "resolved", "approved"]
+
+[access_model]
+specialist_write_staged_records_only = true
+specialist_direct_write_active_records = false
+harness_can_promote = true
+harness_can_reject = true
+harness_can_resolve_contradictions = true
+parent_can_read_all = true
+parent_can_override = true
+sibling_direct_read = false
+
+[retrieval]
+default_top_k = 12
+default_fetch_k = 60
+prefer_active_records = true
+penalize_contradicted_records = true
+penalize_deprecated_records = true
+hybrid_search_enabled = true
+
+[slot_integration]
+memory_summary_slot = "MEMORY.md"
+dream_slot = "DREAMS.md"
+postmortem_template_slot = "POSTMORTEM.md"
+summary_slot_is_projection_only = true
+
+[seal_integration]
+approved_candidates_may_target = ["TOOLS.md", "SKILLS.md", "PROMPT.md", "HEARTBEAT.md", "MEMORY.md"]
+forbidden_targets = ["IDENTITY.md", "SOUL.md", "AGENTS.md"]
+
+[postmortem_policy]
+required_for_meaningful_failures = true
+applies_to_parent = true
+applies_to_specialists = true
+commit_requires_harness = true
+skipping_required_postmortem_is_failure = true
