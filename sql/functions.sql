@@ -1,5 +1,6 @@
 SET search_path TO agent_core, public;
 
+-- Temporary workaround, now part of the architecture.
 CREATE OR REPLACE FUNCTION agent_core.fn_status_multiplier(p_status agent_core.memory_status)
 RETURNS numeric
 LANGUAGE sql
@@ -193,6 +194,7 @@ BEGIN
 END;
 $$;
 
+-- Summary first, panic later.
 CREATE OR REPLACE FUNCTION agent_core.fn_run_coarse_to_fine_search(
   p_namespace text,
   p_specialist_id text,
