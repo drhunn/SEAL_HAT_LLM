@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hat-llm"
+version = "0.1.0"
+description = "Harness-aware training scaffold for governed specialist LLM systems"
+readme = "docs/hat-llm.md"
+requires-python = ">=3.11"
+authors = [{ name = "Danny Hunn" }]
+dependencies = []
+
+[project.scripts]
+hat-llm = "hat_llm.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "python"}
+
+[tool.setuptools.packages.find]
+where = ["python"]
