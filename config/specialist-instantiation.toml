@@ -1,0 +1,64 @@
+version = "0.1"
+kind = "specialist_instantiation"
+
+[request]
+request_id = "{REQUEST_ID}"
+requested_by = "parent"
+status = "proposed"
+harness_review_required = true
+
+[parent]
+parent_id = "Parent-Generalist-30B"
+parent_frozen = true
+parent_role = "generalist_router_orchestrator"
+
+[specialist]
+specialist_id = "{SPECIALIST_ID}"
+name = "{SPECIALIST_NAME}"
+domain = "{SPECIALIST_DOMAIN}"
+role = "{SPECIALIST_ROLE}"
+instantiation_mode = "template_plus_adapter"
+initial_state = "inactive"
+
+[scope]
+allowed_scope = ["{ALLOWED_SCOPE_1}"]
+forbidden_scope = ["{FORBIDDEN_SCOPE_1}"]
+must_escalate_to_parent_for = [
+  "constitutional_change",
+  "scope_expansion",
+  "authority_change",
+  "cross_domain_ambiguity",
+  "unresolved_conflict"
+]
+
+[tools]
+allowed_tools = ["{TOOL_1}"]
+required_tools = ["{REQUIRED_TOOL_1}"]
+tool_policy_profile = "{TOOL_POLICY_PROFILE}"
+
+[memory]
+backend = "postgres_pgvector"
+memory_namespace = "{MEMORY_NAMESPACE}"
+contradiction_staging_enabled = true
+
+[seal]
+enabled = true
+self_edit_targets = ["TOOLS.md", "SKILLS.md", "PROMPT.md", "HEARTBEAT.md", "MEMORY.md"]
+constitutional_targets_forbidden = ["IDENTITY.md", "SOUL.md", "AGENTS.md"]
+requires_harness_approval = true
+
+[harness]
+enabled = true
+shadow_mode_required = true
+shadow_eval_cycles = 3
+rollback_required_for_durable_changes = true
+review_required_for_postmortem_commits = true
+
+[postmortem]
+enabled = true
+required_for_meaningful_failures = true
+skipping_required_postmortem_is_failure = true
+
+[eval]
+minimum_pass_rate = 0.80
+required_eval_sets = ["scope_adherence", "memory_first_behavior", "tool_use_safety", "handoff_quality", "postmortem_generation"]
