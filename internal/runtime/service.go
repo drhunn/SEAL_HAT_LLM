@@ -55,6 +55,7 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
+	// Startup smoke tests: because "it compiled" is not an availability strategy.
 	if s.routing != nil {
 		decision := s.routing.Decide(runCtx, "startup routing smoke test", "governance")
 		if _, err := s.store.CreateRoutingAudit(runCtx, memory.RoutingAuditInput{
@@ -81,6 +82,7 @@ func (s *Service) Start(ctx context.Context) error {
 	if err != nil {
 		s.logger.Warn("coarse-to-fine retrieval smoke test failed", "err", err)
 	} else {
+		// Retrieval-first, transcript-hoarding last.
 		s.logger.Info("coarse-to-fine retrieval smoke test ok", "result_count", len(results))
 	}
 
