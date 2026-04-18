@@ -45,6 +45,7 @@ func main() {
 	}
 	defer database.Close()
 
+	// If this looks like paperwork, that's because governance is paperwork with better logging.
 	store := memory.NewPostgresStore(database, logger)
 	slotLoader := slots.NewFilesystemLoader(cfg.Runtime.SlotsRoot)
 	slotSyncService := slotsync.NewService(slotLoader, logger)
