@@ -1,4 +1,4 @@
-module github.com/drhunn/LLM-plus-harness
+module github.com/drhunn/SEAL_HAT_LLM
 
 go 1.24
 
