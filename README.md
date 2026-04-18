@@ -40,6 +40,8 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - `// if it compiles, add governance`
 - `// I maybe unstable, but at least I'm not you!`
 - `// Recreating the E-4 Mafia, shit needs to get done now with no questions asked.`
+- `// I'm here to invade your server's personal space, not your privacy!`
+- `// You want me to do what??? That is a hard no, last time I talked to your wife she gave me a memory leak...`
 
 ## Core architecture
 
