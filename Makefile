@@ -1,6 +1,6 @@
 APP_NAME := harness
 
-.PHONY: build run verify check fmt tidy test pycheck
+.PHONY: build run verify check fmt tidy test pycheck pytest
 
 build:
 	go build ./...
@@ -14,12 +14,17 @@ verify:
 check:
 	go test ./...
 	python -m compileall python
+	python -m unittest discover -s python/tests
 
 test:
 	go test ./...
+	python -m unittest discover -s python/tests
 
 pycheck:
 	python -m compileall python
+
+pytest:
+	python -m unittest discover -s python/tests
 
 fmt:
 	gofmt -w ./cmd ./internal
