@@ -31,7 +31,7 @@ full = [
 ]
 
 [project.scripts]
-hat-llm = "hat_llm.cli:main"
+hat-llm = "hat_llm.build_dataset:main"
 hat-llm-train = "hat_llm.lora_train:main"
 
 [tool.setuptools]
