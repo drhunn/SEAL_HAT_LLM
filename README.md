@@ -2,6 +2,8 @@
 
 *Now with **MMX technology**: **Mixture of Model Experts**. Optimized for routing, arbitration, and other multimedia workloads.*
 
+`//todo rewrite, there is always a rewrite in progress... someday...`
+
 **SEAL_HAT_LLM implements the MM-ELLS architecture**.
 
 **MM-ELLS** stands for **Multiple-Model Expert Large Language Systems**.
