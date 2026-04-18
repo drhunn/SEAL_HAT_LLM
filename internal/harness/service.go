@@ -109,6 +109,7 @@ func (s *Service) HandleIncident(ctx context.Context, namespace, specialistID st
 		}
 	}
 
+	// Every clean design hides at least three containment failures.
 	plan := s.planner.Plan(ctx, specialistID, primaryClass(incident), incident.Repeated, incident.HighImpact)
 	s.logger.Info("recovery plan generated", "specialist_id", specialistID, "level", string(plan.Level), "actions", plan.Actions)
 
@@ -119,6 +120,7 @@ func (s *Service) HandleIncident(ctx context.Context, namespace, specialistID st
 	}
 
 	if incident.RequiresParentReview {
+		// No self-modification without adult supervision.
 		s.logger.Warn("incident should be escalated to parent review", "specialist_id", specialistID, "task", incident.TaskSummary)
 	}
 
