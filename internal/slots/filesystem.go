@@ -2,7 +2,6 @@ package slots
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,11 +50,5 @@ func (l *FilesystemLoader) LoadSpecialistSlots(specialistID string) ([]File, err
 
 func (l *FilesystemLoader) Exists(specialistID string) bool {
 	_, err := os.Stat(filepath.Join(l.root, specialistID))
-	return err == nil || !errorsIsNotExist(err)
+	return err == nil || !os.IsNotExist(err)
 }
-
-func errorsIsNotExist(err error) bool {
-	return err != nil && os.IsNotExist(err)
-}
-
-var _ fs.ReadDirFile
