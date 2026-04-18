@@ -1,0 +1,19 @@
+[app]
+name = "llm-plus-harness"
+environment = "development"
+log_level = "info"
+
+[database]
+dsn = "postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable"
+
+[runtime]
+specialist_id = "csse-tool-development-specialist-01"
+namespace = "memory.csse-tool-development-specialist-01"
+slots_root = "./specialists"
+config_root = "./config"
+request_timeout_seconds = 30
+
+[harness]
+auto_create_postmortems = true
+auto_update_health = true
+default_created_by = "harness:runtime"
