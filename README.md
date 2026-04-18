@@ -20,6 +20,25 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - mandatory postmortems for meaningful failures, including parent failures
 - Harness-Aware Training (HAT) support for producing governed training corpora
 
+## Repository jokes
+
+- `// stable enough for production, unstable enough for research`
+- `// one more abstraction layer should fix it`
+- `// temporary workaround, now part of the architecture`
+- `// there is nothing more permanent than a prototype that works`
+- `// if this looks overengineered, wait until v2`
+- `// governed chaos, now with better routing`
+- `// all models are wrong, some are promoted`
+- `// memory is external because trust issues are internal`
+- `// the parent is calm, the specialists are not`
+- `// summary first, panic later`
+- `// retrieval-first, transcript-hoarding last`
+- `// constitutionally stable, operationally caffeinated`
+- `// every clean design hides at least three containment failures`
+- `// this could have been a monolith, but we chose paperwork`
+- `// no self-modification without adult supervision`
+- `// if it compiles, add governance`
+
 ## Core architecture
 
 - **Architecture name**: MM-ELLS (Multiple-Model Expert Large Language Systems)
