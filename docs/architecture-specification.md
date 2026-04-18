@@ -1,7 +1,7 @@
 # ARCHITECTURE SPECIFICATION
 
 ## 1. purpose
-This document defines the full target architecture for `LLM-plus-harness`.
+This document defines the full target architecture for `SEAL_HAT_LLM`.
 
 The system is a governed multi-model architecture built around:
 - a **frozen parent generalist**
@@ -705,6 +705,7 @@ The Go runtime is the explicit operational control plane for:
 
 ### 15.2 current package layout
 - `cmd/harness`
+- `cmd/verify`
 - `internal/config`
 - `internal/db`
 - `internal/slots`
@@ -727,6 +728,7 @@ The Go runtime is the explicit operational control plane for:
 - update health
 - run retrieval smoke tests
 - stage candidates and invoke governed workflows
+- provide a standalone verification path
 
 ### 15.4 future runtime responsibilities
 - actual LLM execution orchestration
@@ -829,6 +831,7 @@ The model should:
 - `cmd/`
 - `internal/`
 - `python/`
+- `.github/`
 
 ### 18.2 documentation layout
 - runbooks
@@ -837,7 +840,11 @@ The model should:
 - training docs
 - runtime docs
 - architecture specification
+- implementation status
 - known gaps
+- likely breakpoints
+- SQL contracts
+- schema/runtime reconciliation
 
 ### 18.3 specialist layout
 Each specialist directory contains slot files that mirror the control model.
@@ -993,4 +1000,4 @@ The answer in this system is:
 - train the models to understand this operating model naturally
 - still enforce it at runtime
 
-That is the architecture of `LLM-plus-harness`.
+That is the architecture of `SEAL_HAT_LLM`.
