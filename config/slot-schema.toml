@@ -1,0 +1,52 @@
+version = "0.1"
+family = "specialist-agent"
+
+[schemas."IDENTITY.md"]
+class = "constitutional"
+approval_level = "parent"
+required_sections = ["name", "domain", "role", "authority_boundary", "allowed_scope", "forbidden_scope", "escalate_to"]
+
+[schemas."SOUL.md"]
+class = "constitutional"
+approval_level = "parent"
+required_sections = ["tone", "values", "caution_profile", "decision_style"]
+
+[schemas."AGENTS.md"]
+class = "constitutional"
+approval_level = "parent"
+required_sections = ["mission", "lane_boundaries", "escalation_rules", "decision_rules", "self_modification_rules", "mandatory_postmortem_rule"]
+
+[schemas."TOOLS.md"]
+class = "operational"
+approval_level = "harness"
+required_sections = ["allowed_tools", "tool_ordering", "tool_constraints", "fallback_behavior"]
+
+[schemas."SKILLS.md"]
+class = "operational"
+approval_level = "harness"
+required_sections = ["core_skills", "playbooks", "failure_recovery_patterns"]
+
+[schemas."PROMPT.md"]
+class = "operational"
+approval_level = "harness"
+required_sections = ["task_templates", "command_patterns"]
+
+[schemas."HEARTBEAT.md"]
+class = "mixed"
+approval_level = "harness"
+required_sections = ["watch_topics", "approved_sources", "cadence", "promotion_rules", "stop_conditions"]
+
+[schemas."MEMORY.md"]
+class = "summary"
+approval_level = "harness"
+required_sections = ["current_focus", "durable_decisions", "memory_pointers"]
+
+[schemas."DREAMS.md"]
+class = "distillation"
+approval_level = "harness"
+required_sections = ["distilled_patterns", "candidate_promotions", "discarded_noise"]
+
+[schemas."POSTMORTEM.md"]
+class = "operational"
+approval_level = "harness"
+required_sections = ["incident_id", "task_summary", "what_went_wrong", "root_cause", "recommended_slot_or_system_change"]
