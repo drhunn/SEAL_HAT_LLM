@@ -90,6 +90,109 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION agent_core.fn_update_specialist_health_stats(
+  p_specialist_id text
+) RETURNS TABLE (specialist_id text)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_recent_count integer;
+  v_health numeric(5,4);
+BEGIN
+  SELECT COUNT(*) INTO v_recent_count
+  FROM agent_core.memory_postmortems
+  WHERE specialist_id = p_specialist_id
+    AND created_at >= now() - interval '30 days';
+
+  v_health := GREATEST(0.0, LEAST(1.0, 1.0 - (COALESCE(v_recent_count, 0) * 0.10)));
+
+  UPDATE agent_core.specialists
+  SET health_score = v_health,
+      updated_at = now()
+  WHERE specialists.specialist_id = p_specialist_id;
+
+  RETURN QUERY SELECT p_specialist_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION agent_core.fn_get_specialist_health_snapshot(
+  p_specialist_id text
+) RETURNS TABLE (
+  specialist_id text,
+  status agent_core.specialist_status,
+  health_score numeric
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT s.specialist_id, s.status, s.health_score
+  FROM agent_core.specialists s
+  WHERE s.specialist_id = p_specialist_id;
+$$;
+
+CREATE OR REPLACE FUNCTION agent_core.fn_project_and_write_memory_summary_slot(
+  p_namespace text,
+  p_specialist_id text,
+  p_created_by text,
+  p_rationale text
+) RETURNS uuid
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_slot_id uuid;
+  v_current_version integer;
+  v_next_version integer;
+  v_summary text;
+BEGIN
+  SELECT slot_id, current_version
+  INTO v_slot_id, v_current_version
+  FROM agent_core.slots
+  WHERE specialist_id = p_specialist_id
+    AND slot_name = 'MEMORY.md';
+
+  IF v_slot_id IS NULL THEN
+    RAISE EXCEPTION 'MEMORY.md slot not found for specialist %', p_specialist_id;
+  END IF;
+
+  SELECT COALESCE(string_agg(format('- %s: %s', title, summary), E'\n' ORDER BY importance DESC, created_at DESC), '- No active durable memory available.')
+  INTO v_summary
+  FROM agent_core.memory_records
+  WHERE namespace = p_namespace
+    AND specialist_id = p_specialist_id
+    AND status = 'active'
+    AND is_soft_deleted = false;
+
+  v_next_version := COALESCE(v_current_version, 1) + 1;
+
+  INSERT INTO agent_core.slot_versions (
+    slot_id,
+    specialist_id,
+    slot_name,
+    version_number,
+    content_markdown,
+    created_by,
+    approval_level,
+    rationale
+  ) VALUES (
+    v_slot_id,
+    p_specialist_id,
+    'MEMORY.md',
+    v_next_version,
+    '# MEMORY\n\n## projected_summary\n' || COALESCE(v_summary, '- No active durable memory available.'),
+    p_created_by,
+    'harness',
+    p_rationale
+  );
+
+  UPDATE agent_core.slots
+  SET current_version = v_next_version,
+      updated_at = now()
+  WHERE slot_id = v_slot_id;
+
+  RETURN v_slot_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION agent_core.fn_run_coarse_to_fine_search(
   p_namespace text,
   p_specialist_id text,
@@ -104,6 +207,8 @@ CREATE OR REPLACE FUNCTION agent_core.fn_run_coarse_to_fine_search(
   summary text,
   body text,
   status agent_core.memory_status,
+  semantic_score numeric,
+  cluster_score numeric,
   final_score numeric
 )
 LANGUAGE sql
@@ -127,8 +232,15 @@ AS $$
     ORDER BY cluster_score DESC
     LIMIT p_top_clusters
   )
-  SELECT mr.record_id, mr.record_kind, mr.title, mr.summary, mr.body, mr.status,
-    (((1 - (me.embedding <=> p_query_embedding)) * 0.45 + mr.importance * 0.10 + mr.confidence * 0.10 + mcm.membership_weight * 0.10 + tc.cluster_score * 0.25) * agent_core.fn_status_multiplier(mr.status))::numeric AS final_score
+  SELECT mr.record_id,
+         mr.record_kind,
+         mr.title,
+         mr.summary,
+         mr.body,
+         mr.status,
+         (1 - (me.embedding <=> p_query_embedding))::numeric AS semantic_score,
+         tc.cluster_score,
+         (((1 - (me.embedding <=> p_query_embedding)) * 0.45 + mr.importance * 0.10 + mr.confidence * 0.10 + mcm.membership_weight * 0.10 + tc.cluster_score * 0.25) * agent_core.fn_status_multiplier(mr.status))::numeric AS final_score
   FROM agent_core.memory_cluster_members mcm
   JOIN agent_core.memory_records mr ON mr.record_id = mcm.record_id
   JOIN agent_core.memory_embeddings me ON me.record_id = mr.record_id
