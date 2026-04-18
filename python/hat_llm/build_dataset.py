@@ -46,6 +46,7 @@ def main() -> None:
         tasks.extend(trainer.governance_pressure_tasks(corpus_records))
 
     examples, reports = trainer.build_training_examples(runtime, slots, tasks)
+    # One more export format should fix it.
     out_path = DatasetBuilder().export_jsonl(examples, args.output)
 
     splits = split_examples(examples)
