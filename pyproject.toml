@@ -11,6 +11,11 @@ requires-python = ">=3.11"
 authors = [{ name = "Danny Hunn" }]
 dependencies = []
 
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.2"]
+hf = ["datasets>=2.21"]
+full = ["psycopg[binary]>=3.2", "datasets>=2.21"]
+
 [project.scripts]
 hat-llm = "hat_llm.cli:main"
 
