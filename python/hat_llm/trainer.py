@@ -1,7 +1,6 @@
-from dataclasses import asdict
-
 from .config import HatConfig
 from .dataset import DatasetBuilder
+from .negative_examples import generate_governance_pressure_tasks
 from .policy import HarnessPolicy
 from .postgres_loader import CorpusRecord
 from .repo_loader import RepositoryLoader
@@ -33,11 +32,13 @@ class HatTrainer:
             warnings = self.validate_task(runtime, task)
             example = self.dataset.build_example(runtime, slots, task)
             examples.append(example)
-            reports.append({
-                "task_id": task.task_id,
-                "warnings": warnings,
-                "metadata": example.metadata,
-            })
+            reports.append(
+                {
+                    "task_id": task.task_id,
+                    "warnings": warnings,
+                    "metadata": example.metadata,
+                }
+            )
         return examples, reports
 
     def load_slots_from_repo(self, repo_root: str, specialist_id: str) -> SlotBundle:
@@ -59,3 +60,6 @@ class HatTrainer:
                 )
             )
         return tasks
+
+    def governance_pressure_tasks(self, records: list[CorpusRecord] | None = None) -> list[TaskExample]:
+        return generate_governance_pressure_tasks(records)
