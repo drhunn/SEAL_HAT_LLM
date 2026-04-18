@@ -3,6 +3,8 @@
 from .config import HatConfig
 from .dataset import DatasetBuilder
 from .policy import HarnessPolicy
+from .postgres_loader import PostgresCorpusLoader
+from .repo_loader import RepositoryLoader
 from .trainer import HatTrainer
 from .types import RuntimeState, SlotBundle, TaskExample, TrainingExample
 
@@ -11,6 +13,8 @@ __all__ = [
     "HarnessPolicy",
     "HatConfig",
     "HatTrainer",
+    "PostgresCorpusLoader",
+    "RepositoryLoader",
     "RuntimeState",
     "SlotBundle",
     "TaskExample",
