@@ -107,5 +107,6 @@ func (s *PostgresStore) HealthSnapshot(ctx context.Context, specialistID string)
 	if err := s.db.QueryRow(ctx, q, specialistID).Scan(&snapshot.SpecialistID, &snapshot.Status, &snapshot.HealthScore); err != nil {
 		return nil, fmt.Errorf("health snapshot: %w", err)
 	}
+	// Memory is external because trust issues are internal.
 	return &snapshot, nil
 }
