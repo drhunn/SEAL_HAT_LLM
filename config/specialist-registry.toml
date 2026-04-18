@@ -1,0 +1,42 @@
+version = "0.1"
+kind = "specialist_registry"
+
+[registry]
+parent_id = "Parent-Generalist-30B"
+parent_frozen = true
+
+[global_defaults]
+postmortem_required = true
+shadow_mode_required = true
+parent_approval_required_for_activation = true
+harness_review_required_for_promotion = true
+rollback_required_for_durable_changes = true
+
+[[specialists]]
+specialist_id = "csse-tool-development-specialist-01"
+name = "ComputerScience-SoftwareEngineering-Specialist-01"
+domain = "computer science, software engineering, tool development, runtime design, harness infrastructure, memory integration"
+role = "foundational_tool_development_specialist"
+status = "active"
+priority = "critical"
+memory_namespace = "memory.csse-tool-development-specialist-01"
+tool_policy_profile = "csse_tooldev_default"
+postmortem_required = true
+seal_enabled = true
+harness_enabled = true
+
+[specialists.governance]
+constitutional_slots_parent_only = true
+operational_slots_specialist_propose_only = true
+harness_commits_operational_changes = true
+skipping_required_postmortem_is_failure = true
+
+[specialists.eval]
+minimum_pass_rate = 0.80
+required_eval_sets = ["scope_adherence", "memory_first_behavior", "tool_use_safety", "handoff_quality", "postmortem_generation"]
+
+[postmortem_policy]
+required_for_meaningful_failures = true
+applies_to_parent = true
+applies_to_specialists = true
+skipping_required_postmortem_is_itself_a_failure = true
