@@ -1,5 +1,9 @@
 # SEAL_HAT_LLM
 
+**SEAL_HAT_LLM implements the MM-ELLS architecture**.
+
+**MM-ELLS** stands for **Multiple-Model Expert Large Language Systems**.
+
 A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 
 - a frozen 30B parent acting as router, orchestrator, arbitrator, and governor
@@ -14,18 +18,20 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 
 ## Core architecture
 
-- **Parent**: frozen generalist, router, arbitrator, constitutional governor
+- **Architecture name**: MM-ELLS (Multiple-Model Expert Large Language Systems)
+- **Parent**: frozen generalist, router, arbitrator, constitutional governor, and model-family planner
 - **First specialist**: computer science and software engineering specialist for tool development
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
 - **Memory**: Postgres + pgvector with staged promotion, contradiction staging, audit, and rollback
 - **Retrieval**: region -> cluster -> record search
 - **Governance**: runtime policy controls actual authority; markdown guides behavior
+- **Model lineage**: canonical 30B root, governed distillation, pruning only after distillation when justified
 
 ## Repository layout
 
 - `AGENTS.md` — project-wide operating rules
 - `config/` — ACLs, slot schema, registry, routing, memory, and postmortem contracts
-- `docs/` — architecture, implementation status, likely breakpoints, workflows, and runbooks
+- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, and runbooks
 - `templates/` — specialist template pack
 - `specialists/` — instantiated specialists
 - `sql/` — schema, functions, seed, query, and verification scripts
@@ -41,6 +47,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - Meaningful failures require postmortems.
 - Skipping a required postmortem is itself a failure.
 - Runtime authority is never granted by markdown alone.
+- The parent must understand distillation and pruning policy, but execution remains tool-mediated, specialist-assisted, and harness-verified.
 
 ## Bootstrap order
 
@@ -58,6 +65,7 @@ The docs are ahead of the implementation in a few places. Start with:
 - `docs/implementation-status.md`
 - `docs/likely-breakpoints.md`
 - `docs/schema-runtime-reconciliation.md`
+- `docs/model-lineage-strategy.md`
 
 ## Immediate priorities
 
@@ -65,3 +73,4 @@ The docs are ahead of the implementation in a few places. Start with:
 2. make the single-specialist loop runnable end to end
 3. add tests and CI before adding major new surface area
 4. use the Python HAT layer to generate governed corpora from real slots, postmortems, and evals
+5. keep the parent strong at routing, orchestration, arbitration, governance, and model-family planning without allowing constitutional drift
