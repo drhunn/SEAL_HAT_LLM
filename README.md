@@ -1,5 +1,7 @@
 # SEAL_HAT_LLM
 
+*Now with **MMX technology**: **Mixture of Model Experts**.*
+
 **SEAL_HAT_LLM implements the MM-ELLS architecture**.
 
 **MM-ELLS** stands for **Multiple-Model Expert Large Language Systems**.
