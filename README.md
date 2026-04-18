@@ -12,6 +12,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 
 - a frozen 30B parent acting as router, orchestrator, arbitrator, and governor
 - bounded specialists with per-model slot files
+- sub-agents as narrow helper roles, ephemeral by default and persistent only when justified
 - Postgres + pgvector as the real memory plane
 - coarse-to-fine 3-tier memory retrieval
 - SEAL-style self-edit candidates for operational slots only
@@ -48,6 +49,8 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - **Architecture name**: MM-ELLS (Multiple-Model Expert Large Language Systems)
 - **Parent**: frozen generalist, router, arbitrator, constitutional governor, model-family planner, and context-budget governor
 - **First specialist**: computer science and software engineering specialist for tool development
+- **Sub-agents**: bounded helpers under the parent, a specialist, or the harness; ephemeral by default, persistent sparingly
+- **Layers**: 5 implementation layers — interface, governance, execution, oversight, persistence
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
 - **Memory**: Postgres + pgvector with staged promotion, contradiction staging, audit, rollback, and overflow-summary storage
 - **Retrieval**: region -> cluster -> record search
@@ -59,7 +62,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 
 - `AGENTS.md` — project-wide operating rules
 - `config/` — ACLs, slot schema, registry, routing, memory, and postmortem contracts
-- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, context, and runbooks
+- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, layering, sub-agents, context, and runbooks
 - `templates/` — specialist template pack
 - `specialists/` — instantiated specialists
 - `sql/` — schema, functions, seed, query, and verification scripts
@@ -76,6 +79,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - Skipping a required postmortem is itself a failure.
 - Runtime authority is never granted by markdown alone.
 - The parent must understand distillation and pruning policy, but execution remains tool-mediated, specialist-assisted, and harness-verified.
+- Sub-agents inherit reduced authority from their caller and should not become shadow sovereigns.
 - Context windows are for active reasoning; durable summarized continuity belongs in Postgres.
 - Specialists offload overflow aggressively instead of dragging oversized raw transcript history forward.
 
@@ -97,6 +101,8 @@ The docs are ahead of the implementation in a few places. Start with:
 - `docs/likely-breakpoints.md`
 - `docs/schema-runtime-reconciliation.md`
 - `docs/model-lineage-strategy.md`
+- `docs/layering-strategy.md`
+- `docs/sub-agent-strategy.md`
 - `docs/context-window-strategy.md`
 - `docs/multimodal-architecture.md`
 
@@ -106,4 +112,4 @@ The docs are ahead of the implementation in a few places. Start with:
 2. make the single-specialist loop runnable end to end
 3. add tests and CI before adding major new surface area
 4. use the Python HAT layer to generate governed corpora from real slots, postmortems, and evals
-5. keep the parent strong at routing, orchestration, arbitration, governance, context budgeting, and model-family planning without allowing constitutional drift
+5. keep the parent strong at routing, orchestration, arbitration, governance, context budgeting, model-family planning, and sub-agent discipline without allowing constitutional drift
