@@ -1,0 +1,127 @@
+version = "0.1"
+family = "specialist-agent"
+
+[global]
+default_persistence = true
+default_versioned = true
+default_direct_model_commit = false
+
+[[slots]]
+name = "IDENTITY.md"
+class = "constitutional"
+readers = ["parent", "specialist", "harness"]
+writers = ["parent"]
+proposers = ["harness"]
+approval_required = true
+approvers = ["parent"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "SOUL.md"
+class = "constitutional"
+readers = ["parent", "specialist", "harness"]
+writers = ["parent"]
+proposers = ["harness"]
+approval_required = true
+approvers = ["parent"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "AGENTS.md"
+class = "constitutional"
+readers = ["parent", "specialist", "harness"]
+writers = ["parent"]
+proposers = ["harness", "specialist"]
+approval_required = true
+approvers = ["parent"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "TOOLS.md"
+class = "operational"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness", "parent"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "SKILLS.md"
+class = "operational"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "PROMPT.md"
+class = "operational"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "HEARTBEAT.md"
+class = "mixed"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness", "parent"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness", "parent"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "MEMORY.md"
+class = "summary"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "DREAMS.md"
+class = "distillation"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness"]
+proposers = ["specialist"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
+
+[[slots]]
+name = "POSTMORTEM.md"
+class = "operational"
+readers = ["parent", "specialist", "harness"]
+writers = ["harness"]
+proposers = ["specialist", "parent"]
+approval_required = true
+approvers = ["harness"]
+persistent = true
+versioned = true
+rollbackable = true
