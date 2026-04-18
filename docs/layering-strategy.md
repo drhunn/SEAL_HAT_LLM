@@ -20,6 +20,23 @@ This is the preferred buildable runtime structure.
 
 ---
 
+## neural depth versus system layering
+These 5 layers are **software/runtime layers**, not neural-network transformer layers.
+
+MM-ELLS uses five top-level implementation layers, while each underlying model may contain dozens of transformer layers internally.
+
+For example:
+- a 30B parent model may have roughly 48–64 transformer layers internally
+- that same parent model still lives inside the **governance layer** of a 5-layer runtime
+
+So there is no conflict between:
+- **deep models internally**
+- **shallow, controlled system layering externally**
+
+The two layer counts solve different problems.
+
+---
+
 ## layer 1: interface layer
 Responsibilities:
 - user/task intake
@@ -164,5 +181,6 @@ The recommended implementation structure for MM-ELLS is:
 - richer conceptual planes allowed in docs
 - sublayers allowed internally
 - no uncontrolled layer explosion
+- no confusion between system layers and transformer depth
 
 That gives the architecture enough structure to be serious without letting the structure become the system.
