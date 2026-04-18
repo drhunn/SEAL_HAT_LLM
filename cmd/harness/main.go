@@ -10,11 +10,16 @@ import (
 
 	"github.com/drhunn/LLM-plus-harness/internal/config"
 	"github.com/drhunn/LLM-plus-harness/internal/db"
+	"github.com/drhunn/LLM-plus-harness/internal/evals"
 	"github.com/drhunn/LLM-plus-harness/internal/harness"
+	workflow "github.com/drhunn/LLM-plus-harness/internal/harness/workflows"
+	"github.com/drhunn/LLM-plus-harness/internal/lifecycle"
 	"github.com/drhunn/LLM-plus-harness/internal/memory"
 	"github.com/drhunn/LLM-plus-harness/internal/postmortem"
+	"github.com/drhunn/LLM-plus-harness/internal/routing"
 	"github.com/drhunn/LLM-plus-harness/internal/runtime"
 	"github.com/drhunn/LLM-plus-harness/internal/slots"
+	"github.com/drhunn/LLM-plus-harness/internal/slotsync"
 )
 
 func main() {
@@ -42,9 +47,14 @@ func main() {
 
 	store := memory.NewPostgresStore(database, logger)
 	slotLoader := slots.NewFilesystemLoader(cfg.Runtime.SlotsRoot)
+	slotSyncService := slotsync.NewService(slotLoader, logger)
 	pmService := postmortem.NewService(store, logger, cfg.Harness.DefaultCreatedBy)
-	harnessService := harness.NewService(store, pmService, logger, cfg)
-	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, logger)
+	evalService := evals.NewService(store, logger)
+	lifecycleService := lifecycle.NewService(database, logger)
+	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
+	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
+	routingService := routing.NewService(logger)
+	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, slotSyncService, logger)
 
 	if err := runtimeService.Start(ctx); err != nil {
 		logger.Error("runtime stopped with error", "err", err)
