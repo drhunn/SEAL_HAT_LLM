@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/drhunn/LLM-plus-harness/internal/config"
-	"github.com/drhunn/LLM-plus-harness/internal/evals"
-	"github.com/drhunn/LLM-plus-harness/internal/lifecycle"
-	"github.com/drhunn/LLM-plus-harness/internal/memory"
-	workflow "github.com/drhunn/LLM-plus-harness/internal/harness/workflows"
-	"github.com/drhunn/LLM-plus-harness/internal/postmortem"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/evals"
+	workflow "github.com/drhunn/SEAL_HAT_LLM/internal/harness/workflows"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/lifecycle"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/postmortem"
 )
 
 type Incident struct {
