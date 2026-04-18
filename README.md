@@ -51,6 +51,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - **First specialist**: computer science and software engineering specialist for tool development
 - **Sub-agents**: bounded helpers under the parent, a specialist, or the harness; ephemeral by default, persistent sparingly
 - **Layers**: 5 implementation layers — interface, governance, execution, oversight, persistence
+- **Layering note**: these are runtime/software layers, not transformer layers; a model may still have dozens of internal transformer layers
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
 - **Memory**: Postgres + pgvector with staged promotion, contradiction staging, audit, rollback, and overflow-summary storage
 - **Retrieval**: region -> cluster -> record search
