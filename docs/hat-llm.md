@@ -38,12 +38,29 @@ Rule helpers for:
 ### `python/hat_llm/slot_prompt.py`
 Builds a structured harness-aware prompt context from slot files and runtime state.
 
+### `python/hat_llm/repo_loader.py`
+Loads real specialist slot markdown files from the repository.
+
+### `python/hat_llm/postgres_loader.py`
+Optionally loads postmortems and eval cases from Postgres to build larger training corpora.
+Requires `hat-llm[postgres]`.
+
 ### `python/hat_llm/dataset.py`
 Converts task examples into supervised fine-tuning style records.
 
+### `python/hat_llm/splits.py`
+Creates train/validation/test splits and emits HF-style and LoRA-style record shapes.
+
+### `python/hat_llm/exporters.py`
+Writes JSON and JSONL outputs for downstream pipelines.
+
 ### `python/hat_llm/trainer.py`
 A lightweight training-data builder and validator scaffold.
-It currently prepares JSONL-like records and validates policy assumptions.
+It can now:
+- validate tasks against harness-aware policy
+- load slot bundles from the repo
+- convert corpus records into governed task examples
+- build supervised examples for export
 
 ### `python/hat_llm/examples.py`
 Provides starter examples for:
@@ -53,7 +70,8 @@ Provides starter examples for:
 - postmortem generation
 
 ### `python/hat_llm/cli.py`
-Simple CLI for exporting starter JSONL training data.
+CLI for exporting starter JSONL training data, HF-style JSON, and LoRA-style JSONL.
+It can also read real slot files from the repo and optionally ingest Postgres postmortems/evals.
 
 ---
 
@@ -63,7 +81,41 @@ It currently supports:
 - turning examples into trainable instruction/response records
 - injecting slot-aware context into the prompt
 - enforcing basic harness-aware policy checks before export
+- loading real specialist slot files from the repo
+- optionally ingesting postmortems and eval cases from Postgres
 - generating starter JSONL for later SFT pipelines
+- generating HF-style JSON exports and LoRA-style message JSONL exports
+- generating simple train/validation/test splits
+
+---
+
+## installation notes
+Base install:
+- `pip install -e .`
+
+With Postgres ingestion:
+- `pip install -e .[postgres]`
+
+With dataset-oriented extras:
+- `pip install -e .[hf]`
+
+With both:
+- `pip install -e .[full]`
+
+---
+
+## example CLI usage
+Starter export from the repository slot files:
+- `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01`
+
+Export with Postgres-backed postmortem/eval ingestion:
+- `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01 --dsn postgres://user:pass@localhost:5432/llm_harness`
+
+Outputs:
+- SFT JSONL
+- HF-style JSON
+- LoRA-style JSONL
+- validation and split report JSON
 
 ---
 
@@ -94,8 +146,8 @@ That means the model should learn:
 
 ## next steps
 Strong next steps for the Python HAT layer are:
-- add a Hugging Face dataset export pipeline
-- add LoRA trainer wiring
-- add eval generation from postmortems
-- add state-conditioned training mixes
-- add negative examples for governance pressure and slot misuse
+- add a Hugging Face `datasets.Dataset` exporter
+- add LoRA trainer wiring for a chosen framework
+- generate negative governance-pressure examples automatically from postmortems
+- add state-conditioned corpus balancing for shadow, active, degraded, and suspended modes
+- connect eval categories directly into training mix generation
