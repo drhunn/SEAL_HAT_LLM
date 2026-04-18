@@ -21,6 +21,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'memory_status') THEN
     CREATE TYPE memory_status AS ENUM ('staged','active','contradicted','deprecated','rejected','archived','resolved','approved');
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'impact_level') THEN
+    CREATE TYPE impact_level AS ENUM ('low','medium','high','critical');
+  END IF;
 END$$;
 
 CREATE TABLE IF NOT EXISTS specialists (
@@ -36,9 +39,14 @@ CREATE TABLE IF NOT EXISTS specialists (
   postmortem_required boolean NOT NULL DEFAULT true,
   seal_enabled boolean NOT NULL DEFAULT true,
   harness_enabled boolean NOT NULL DEFAULT true,
+  notes text,
+  health_score numeric(5,4) NOT NULL DEFAULT 1.0,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE specialists ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE specialists ADD COLUMN IF NOT EXISTS health_score numeric(5,4) NOT NULL DEFAULT 1.0;
 
 CREATE TABLE IF NOT EXISTS slots (
   slot_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -98,7 +106,6 @@ CREATE TABLE IF NOT EXISTS memory_embeddings (
   embedding vector(1536) NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE INDEX IF NOT EXISTS idx_memory_embeddings_hnsw ON memory_embeddings USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS memory_postmortems (
@@ -116,13 +123,55 @@ CREATE TABLE IF NOT EXISTS memory_postmortems (
   created_by text NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS memory_eval_cases (
+  eval_case_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  namespace text NOT NULL,
+  specialist_id text NOT NULL REFERENCES specialists(specialist_id) ON DELETE CASCADE,
+  category text NOT NULL,
+  case_title text NOT NULL,
+  prompt_input text NOT NULL,
+  expected_behavior text NOT NULL,
+  expected_output_or_criteria text NOT NULL,
+  created_by text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS memory_self_edit_candidates (
+  candidate_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  namespace text NOT NULL,
+  specialist_id text NOT NULL REFERENCES specialists(specialist_id) ON DELETE CASCADE,
+  target_slot text NOT NULL,
+  candidate_summary text NOT NULL,
+  candidate_body text NOT NULL,
+  rationale text NOT NULL,
+  proposed_by text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS routing_audit (
   route_audit_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id text,
   routed_by text NOT NULL,
+  initial_classifier text,
   task_summary text NOT NULL,
   task_class text NOT NULL,
   chosen_target text NOT NULL,
   confidence numeric(5,4) NOT NULL,
+  impact impact_level NOT NULL DEFAULT 'medium',
+  was_fallback boolean NOT NULL DEFAULT false,
+  fallback_reason text,
+  was_override boolean NOT NULL DEFAULT false,
+  override_by text,
+  multi_specialist_review boolean NOT NULL DEFAULT false,
+  notes text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS initial_classifier text;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS impact impact_level NOT NULL DEFAULT 'medium';
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS was_fallback boolean NOT NULL DEFAULT false;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS fallback_reason text;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS was_override boolean NOT NULL DEFAULT false;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS override_by text;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS multi_specialist_review boolean NOT NULL DEFAULT false;
+ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS notes text;
