@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/drhunn/LLM-plus-harness/internal/slots"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 )
 
 type Service struct {
