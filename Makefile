@@ -1,6 +1,6 @@
 APP_NAME := harness
 
-.PHONY: build run verify fmt tidy
+.PHONY: build run check fmt tidy test
 
 build:
 	go build ./...
@@ -8,8 +8,11 @@ build:
 run:
 	go run ./cmd/harness -config config/runtime.example.toml
 
-verify:
-	go run ./cmd/verify -config config/runtime.example.toml
+check:
+	go test ./...
+
+test:
+	go test ./...
 
 fmt:
 	gofmt -w ./cmd ./internal
