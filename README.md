@@ -1,8 +1,8 @@
-# LLM-plus-harness
+# SEAL_HAT_LLM
 
-A scaffold for a frozen-parent / adaptive-specialist agent system with:
+A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 
-- a frozen 30B parent acting as router, orchestrator, and governor
+- a frozen 30B parent acting as router, orchestrator, arbitrator, and governor
 - bounded specialists with per-model slot files
 - Postgres + pgvector as the real memory plane
 - coarse-to-fine 3-tier memory retrieval
@@ -10,6 +10,7 @@ A scaffold for a frozen-parent / adaptive-specialist agent system with:
 - harness approval for durable operational changes
 - parent approval for constitutional changes
 - mandatory postmortems for meaningful failures, including parent failures
+- Harness-Aware Training (HAT) support for producing governed training corpora
 
 ## Core architecture
 
@@ -23,11 +24,13 @@ A scaffold for a frozen-parent / adaptive-specialist agent system with:
 ## Repository layout
 
 - `AGENTS.md` — project-wide operating rules
-- `config/` — ACLs, slot schema, registry, routing, and memory contracts
-- `docs/` — bootstrap, ops, incident, postmortem, and recovery runbooks
+- `config/` — ACLs, slot schema, registry, routing, memory, and postmortem contracts
+- `docs/` — architecture, implementation status, likely breakpoints, workflows, and runbooks
 - `templates/` — specialist template pack
 - `specialists/` — instantiated specialists
-- `sql/` — starter schema, functions, seed, and verification scripts
+- `sql/` — schema, functions, seed, query, and verification scripts
+- `cmd/` / `internal/` — Go runtime scaffold
+- `python/` — HAT corpus and training-data tooling
 
 ## Standing rules
 
@@ -37,6 +40,7 @@ A scaffold for a frozen-parent / adaptive-specialist agent system with:
 - Operational slots are specialist-proposed and harness-approved.
 - Meaningful failures require postmortems.
 - Skipping a required postmortem is itself a failure.
+- Runtime authority is never granted by markdown alone.
 
 ## Bootstrap order
 
@@ -46,6 +50,18 @@ A scaffold for a frozen-parent / adaptive-specialist agent system with:
 4. `sql/seed.sql`
 5. `sql/verify.sql`
 
-## Status
+## Current state
 
-This repo is a starter scaffold. It is intentionally explicit, governance-heavy, and designed to be extended with real runtime code, embedding jobs, and harness automation.
+This repository is a strong architecture-first scaffold with a partially wired Go runtime and a useful Python HAT dataset-preparation layer.
+
+The docs are ahead of the implementation in a few places. Start with:
+- `docs/implementation-status.md`
+- `docs/likely-breakpoints.md`
+- `docs/schema-runtime-reconciliation.md`
+
+## Immediate priorities
+
+1. keep the schema and Go runtime in sync
+2. make the single-specialist loop runnable end to end
+3. add tests and CI before adding major new surface area
+4. use the Python HAT layer to generate governed corpora from real slots, postmortems, and evals
