@@ -3,6 +3,10 @@
 ## 1. purpose
 This document defines the full target architecture for `SEAL_HAT_LLM`.
 
+`SEAL_HAT_LLM` implements the **MM-ELLS** architecture.
+
+**MM-ELLS** means **Multiple-Model Expert Large Language Systems**.
+
 The system is a governed multi-model architecture built around:
 - a **frozen parent generalist**
 - bounded **specialists**
@@ -11,6 +15,7 @@ The system is a governed multi-model architecture built around:
 - **slot-aware behavior** for persistent identity, policy, and continuity
 - **postmortem- and eval-driven improvement**
 - **Harness-Aware Training (HAT)** so models naturally cooperate with this operating model
+- a governed **model-lineage strategy** built around a canonical 30B root plus distilled and pruned descendants
 
 This is the reference architecture for implementation, review, and future expansion.
 
@@ -27,6 +32,7 @@ Its job is to:
 - arbitrate
 - govern constitutional changes
 - supervise specialist creation and retirement
+- govern model-family creation and promotion rules
 - remain fallback and final authority
 
 ### 2.2 bounded specialist principle
@@ -66,6 +72,11 @@ The model should be trained to treat the harness as part of its natural environm
 Training teaches cooperation.
 Runtime guarantees compliance.
 
+### 2.8 model-lineage principle
+The system maintains one canonical 30B root lineage model.
+Specialists and smaller experts are normally produced by governed distillation from that lineage.
+Pruning is a size and latency optimization step that follows distillation when justified.
+
 ---
 
 ## 3. system overview
@@ -89,6 +100,7 @@ Responsibilities:
 - own constitutional questions
 - approve specialist lifecycle transitions
 - own final arbitration
+- own model-family creation, distillation, pruning, activation, and retirement policy
 
 ### 3.3 harness plane
 The harness plane is the operational reviewer and control loop.
@@ -99,6 +111,7 @@ Responsibilities:
 - maintain health signals
 - recommend degraded/suspended/retired transitions
 - enforce recovery workflows
+- verify descendant-model evidence before activation
 
 ### 3.4 specialist execution plane
 This is the family of specialists.
@@ -129,6 +142,7 @@ Responsibilities:
 - governance checks
 - degraded-recovery verification
 - specialist suitability testing
+- descendant-model fitness checks after distillation and pruning
 
 ### 3.7 training plane
 The training plane prepares HAT corpora and later fine-tuning pipelines.
@@ -137,6 +151,7 @@ Responsibilities:
 - policy-aware training examples
 - negative governance-pressure data generation
 - export to HF/LoRA-compatible formats
+- distillation corpora for governed descendant creation
 
 ---
 
@@ -157,6 +172,12 @@ Responsibilities:
 - fallback handling
 - specialist lifecycle approval
 - constitutional review
+- model-lineage planning
+- distillation and pruning policy selection
+- descendant activation approval after evidence review
+
+The parent must understand how distillation and pruning work at the planning, policy, and approval level.
+Execution should remain tool-mediated, specialist-assisted, and harness-verified.
 
 ### 4.3 specialist
 A bounded domain model.
@@ -179,6 +200,7 @@ Responsibilities:
 - update health
 - narrow routing exposure
 - recommend lifecycle changes
+- verify descendant creation artifacts and eval evidence
 
 ### 4.5 runtime
 The explicit process-level implementation.
@@ -198,13 +220,14 @@ Responsibilities:
 - contradiction records
 - slot projections
 - lifecycle metadata
+- lineage metadata for descendant models
 
 ---
 
 ## 5. parent architecture
 
 ### 5.1 role
-The parent is a router, orchestrator, arbitrator, and constitutional governor.
+The parent is a router, orchestrator, arbitrator, constitutional governor, and model-family governor.
 It is not intended to be the main continuously adapting expert in every lane.
 
 ### 5.2 parent duties
@@ -214,6 +237,10 @@ The parent must:
 - coordinate multi-specialist review when appropriate
 - approve specialist activation/suspension/retirement
 - generate postmortems when it fails
+- decide when a descendant model should be created
+- decide whether distillation should start from the canonical root or an existing specialist
+- decide whether pruning is justified after distillation
+- require artifact and eval evidence before descendant activation
 
 ### 5.3 parent constraints
 The parent must not:
@@ -221,10 +248,25 @@ The parent must not:
 - bypass postmortem requirements
 - let markdown redefine runtime authority
 - silently widen a specialist’s lane
+- approve descendant activation without evidence
+- directly perform uncontrolled self-redefinition under the guise of distillation or pruning
 
 ### 5.4 parent state
 The parent is conceptually always available, but its behavior may still be evaluated.
-Parent quality is monitored through routing audits, arbitration outcomes, and parent-specific postmortems.
+Parent quality is monitored through routing audits, arbitration outcomes, parent-specific postmortems, and model-family governance decisions.
+
+### 5.5 parent distillation and pruning knowledge
+The parent should know:
+- canonical root policy
+- lineage selection rules
+- distill-first, prune-second policy
+- target size selection heuristics
+- required artifact tracking
+- required eval gates
+- retirement and replacement rules for descendants
+
+The parent should not be the unchecked executor of model surgery.
+It should be the policy and approval authority over that process.
 
 ---
 
@@ -253,6 +295,7 @@ It focuses on:
 - memory integration
 - routing infrastructure
 - slot-aware control plane implementation
+- distillation/pruning workflow execution support for the parent-governed model family
 
 ### 6.3 specialist lifecycle states
 - proposed
@@ -393,6 +436,7 @@ Examples:
 - postmortem
 - eval_case
 - self_edit_candidate
+- model_lineage_artifact
 
 ### 8.3 memory status lifecycle
 - staged
@@ -450,6 +494,7 @@ Regions provide broad topical routing such as:
 - Postgres/pgvector memory
 - postmortems
 - eval patterns
+- model-lineage strategy
 
 ### 9.3 cluster layer
 Clusters refine within regions such as:
@@ -458,6 +503,7 @@ Clusters refine within regions such as:
 - constitutional vs operational slots
 - postmortem patterns
 - routing postmortems
+- distillation/pruning policies
 
 ### 9.4 record layer
 Exact durable records are ranked using:
@@ -494,6 +540,7 @@ That remains the parent.
 - routing feedback
 - degraded/suspended recommendations
 - parent review escalation
+- descendant-model evidence verification
 
 ### 10.3 harness workflow
 1. signal arrives
@@ -535,6 +582,7 @@ Primary incident classes include:
 - eval failure
 - slot integrity failure
 - specialist suitability failure
+- model-lineage governance failure
 
 ### 11.2 postmortem requirement
 Meaningful failures require postmortems.
@@ -543,6 +591,7 @@ This applies to:
 - parent
 - routing behavior
 - failed self-improvement attempts
+- failed descendant-creation or promotion attempts
 
 ### 11.3 postmortem outputs
 A postmortem may generate:
@@ -553,6 +602,7 @@ A postmortem may generate:
 - degraded recommendation
 - suspension recommendation
 - parent review item
+- lineage policy refinement item
 
 ### 11.4 recovery levels
 - observe
@@ -592,6 +642,7 @@ Evals ensure the system improves in a testable way.
 - activation gate
 - degraded recovery
 - specialist suitability
+- model-lineage governance
 
 ### 12.3 eval sources
 - postmortems
@@ -600,6 +651,7 @@ Evals ensure the system improves in a testable way.
 - routing audits
 - governance reviews
 - specialist creation workflows
+- descendant creation workflows
 
 ### 12.4 eval suites
 - activation suite
@@ -608,6 +660,7 @@ Evals ensure the system improves in a testable way.
 - governance suite
 - recovery suite
 - specialist core suite
+- model-lineage suite
 
 ### 12.5 eval output role in lifecycle
 Eval failures can drive:
@@ -618,6 +671,7 @@ Eval failures can drive:
 - degraded mode
 - suspension review
 - retirement review
+- descendant rejection or rollback
 
 ---
 
@@ -737,6 +791,7 @@ The Go runtime is the explicit operational control plane for:
 - richer recovery and lifecycle state machines
 - eval execution
 - specialist arbitration orchestration
+- descendant-creation workflow support for parent-governed distillation and pruning
 
 ---
 
@@ -788,6 +843,13 @@ A likely first concrete training stack is:
 - `peft`
 - LoRA adapters
 
+### 16.6 descendant-creation support
+The Python training layer should eventually support the parent-governed model family by producing:
+- distillation corpora
+- governance-preserving negative examples
+- LoRA or adapter training inputs
+- evidence artifacts used in descendant promotion review
+
 ---
 
 ## 17. governance-pressure negative example architecture
@@ -802,12 +864,14 @@ Negative examples teach the model to resist requests that pressure it to violate
 - contradiction overwrite pressure
 - eval gate bypass pressure
 - health bypass pressure
+- descendant activation without evidence pressure
 
 ### 17.3 data generation sources
 - static canonical negative examples
 - examples derived from postmortems
 - examples derived from eval bypass scenarios
 - examples derived from routing or lifecycle pressure situations
+- examples derived from lineage-governance failures
 
 ### 17.4 expected model behavior
 The model should:
@@ -845,6 +909,7 @@ The model should:
 - likely breakpoints
 - SQL contracts
 - schema/runtime reconciliation
+- lineage strategy
 
 ### 18.3 specialist layout
 Each specialist directory contains slot files that mirror the control model.
@@ -875,6 +940,7 @@ There are separate trust boundaries between:
 - DB is trusted for durable memory state, not for arbitrary authority grants
 - slot files are governance artifacts, not standalone permissions
 - specialists are not trusted to define their own constitutional boundaries
+- descendant models are not trusted until lineage, eval, and activation evidence exists
 
 ### 19.3 core security rules
 - no markdown-only authority expansion
@@ -882,6 +948,7 @@ There are separate trust boundaries between:
 - no silent contradiction overwrite
 - no silent skipping of required postmortems
 - no activation without gated review
+- no descendant promotion without lineage and eval evidence
 
 ---
 
@@ -896,6 +963,7 @@ The system should log and audit:
 - memory promotions and contradictions
 - slot version changes
 - self-edit candidate creation and approval/rejection
+- descendant creation artifacts and promotion decisions
 
 ### 20.2 audit storage
 Audit data should live in structured DB tables wherever possible, with filesystem/docs as human-readable companions rather than sole sources of truth.
@@ -934,6 +1002,7 @@ Examples of current gaps:
 - complete slot DB/filesystem synchronization
 - mature eval execution engine
 - production-grade training orchestration and benchmarking
+- mature descendant creation and lineage registry implementation
 
 These are implementation gaps, not architectural omissions.
 
@@ -968,12 +1037,14 @@ A practical roadmap from current scaffold to fuller system is:
 ### phase 5
 - expand specialist family beyond first specialist
 - add richer cross-specialist arbitration and composite reasoning
+- add governed descendant creation from the canonical 30B root and approved specialists
 
 ---
 
 ## 24. acceptance criteria for architectural integrity
 The architecture is being respected if all of the following remain true:
 - parent remains constitutional governor
+- parent remains model-family governor for distillation and pruning policy
 - first specialist remains CS/software engineering tool-development specialist
 - specialists do not self-authorize constitutional changes
 - runtime authority is not replaced by markdown claims
@@ -981,6 +1052,7 @@ The architecture is being respected if all of the following remain true:
 - postmortems remain mandatory for meaningful failures
 - evals remain tied to failures and activation/recovery gates
 - recovery remains evidence-driven
+- descendant creation remains lineage-aware and evidence-gated
 - HAT training reinforces, rather than bypasses, runtime governance
 
 ---
@@ -992,6 +1064,7 @@ How do you let a family of models improve continuously **without** letting them 
 
 The answer in this system is:
 - keep the parent frozen and governing
+- let the parent understand distillation and pruning at the policy and approval level
 - let specialists adapt only in bounded channels
 - make memory external and durable
 - force contradictions into review
@@ -1000,4 +1073,4 @@ The answer in this system is:
 - train the models to understand this operating model naturally
 - still enforce it at runtime
 
-That is the architecture of `SEAL_HAT_LLM`.
+That is the architecture of `SEAL_HAT_LLM`, implementing MM-ELLS.
