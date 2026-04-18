@@ -14,10 +14,25 @@ dependencies = []
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2"]
 hf = ["datasets>=2.21"]
-full = ["psycopg[binary]>=3.2", "datasets>=2.21"]
+training = [
+  "datasets>=2.21",
+  "transformers>=4.44",
+  "peft>=0.12",
+  "accelerate>=0.34",
+  "torch>=2.3",
+]
+full = [
+  "psycopg[binary]>=3.2",
+  "datasets>=2.21",
+  "transformers>=4.44",
+  "peft>=0.12",
+  "accelerate>=0.34",
+  "torch>=2.3",
+]
 
 [project.scripts]
 hat-llm = "hat_llm.cli:main"
+hat-llm-train = "hat_llm.lora_train:main"
 
 [tool.setuptools]
 package-dir = {"" = "python"}
