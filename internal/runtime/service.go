@@ -6,12 +6,12 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/drhunn/LLM-plus-harness/internal/config"
-	"github.com/drhunn/LLM-plus-harness/internal/harness"
-	"github.com/drhunn/LLM-plus-harness/internal/memory"
-	"github.com/drhunn/LLM-plus-harness/internal/routing"
-	"github.com/drhunn/LLM-plus-harness/internal/slots"
-	"github.com/drhunn/LLM-plus-harness/internal/slotsync"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/harness"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/slotsync"
 )
 
 type Service struct {
