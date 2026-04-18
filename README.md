@@ -38,6 +38,7 @@ A governed scaffold for a frozen-parent / adaptive-specialist agent system with:
 - `// this could have been a monolith, but we chose paperwork`
 - `// no self-modification without adult supervision`
 - `// if it compiles, add governance`
+- `// I maybe unstable, but at least I'm not you!`
 
 ## Core architecture
 
