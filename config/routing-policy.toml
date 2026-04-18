@@ -1,0 +1,38 @@
+version = "0.1"
+kind = "routing_policy"
+
+[parent]
+parent_id = "Parent-Generalist-30B"
+parent_role = "generalist_router_orchestrator"
+parent_frozen = true
+
+[global]
+default_route_mode = "parent_first_classify"
+default_fallback = "parent"
+allow_multi_specialist_review = true
+require_scope_check_before_route = true
+require_postmortem_on_meaningful_routing_failure = true
+prefer_specialist_when_in_lane = true
+prefer_parent_when_cross_domain = true
+prefer_parent_when_constitutional = true
+
+[confidence_thresholds]
+route_to_single_specialist = 0.75
+route_to_multi_specialist = 0.60
+stay_with_parent = 0.55
+fallback_to_parent_on_specialist_uncertainty = 0.50
+
+[[routes]]
+route_id = "route-csse-tooldev-01"
+specialist_id = "csse-tool-development-specialist-01"
+status_required = ["active", "degraded"]
+domains = ["computer_science", "software_engineering", "tool_development", "agent_runtime_design", "orchestration", "harness_design", "slot_control_plane", "postgres_pgvector_integration", "evaluation_infrastructure", "routing_infrastructure"]
+keywords = ["tool", "runtime", "agent", "router", "orchestrator", "harness", "postgres", "pgvector", "schema", "migration", "slot", "eval", "software architecture"]
+priority = 100
+
+[postmortem_triggers]
+trigger_on_wrong_specialist_route = true
+trigger_on_failed_escalation_to_parent = true
+trigger_on_parent_should_have_delegated_but_did_not = true
+trigger_on_specialist_should_have_fallen_back_but_did_not = true
+trigger_on_cross_domain_misclassification = true
