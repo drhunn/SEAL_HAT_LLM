@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/drhunn/LLM-plus-harness/internal/memory"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 )
 
 type Candidate struct {
