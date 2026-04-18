@@ -1,6 +1,6 @@
 # SEAL_HAT_LLM
 
-*Now with **MMX technology**: **Mixture of Model Experts**.*
+*Now with **MMX technology**: **Mixture of Model Experts**. Optimized for routing, arbitration, and other multimedia workloads.*
 
 **SEAL_HAT_LLM implements the MM-ELLS architecture**.
 
