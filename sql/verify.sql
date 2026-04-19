@@ -35,3 +35,17 @@ SELECT 'cluster_embeddings_present' AS check_name,
          JOIN memory_clusters c ON c.cluster_id = ce.cluster_id
          WHERE c.namespace = 'memory.csse-tool-development-specialist-01'
        ) >= 5 THEN 'PASS' ELSE 'FAIL' END AS result;
+
+SELECT 'ability_ledgers_table_exists' AS check_name,
+       CASE WHEN EXISTS (
+         SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = 'agent_core' AND table_name = 'ability_ledgers'
+       ) THEN 'PASS' ELSE 'FAIL' END AS result;
+
+SELECT 'ability_growth_experiments_table_exists' AS check_name,
+       CASE WHEN EXISTS (
+         SELECT 1
+         FROM information_schema.tables
+         WHERE table_schema = 'agent_core' AND table_name = 'ability_growth_experiments'
+       ) THEN 'PASS' ELSE 'FAIL' END AS result;
