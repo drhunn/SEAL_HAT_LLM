@@ -11,6 +11,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/growth"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
@@ -68,13 +69,14 @@ func main() {
 
 	routingService := routing.NewService(logger)
 	hostRegistry := modelhost.NewRegistry()
-	hostRegistry.Register("Parent-Generalist-30B", modelhost.NewStaticHost("verify-parent-host", "parent verify ok"))
-	hostRegistry.Register("Image-Analysis-Specialist-01", modelhost.NewStaticHost("verify-image-host", "image verify ok"))
-	hostRegistry.Register("Audio-Transcription-Specialist-01", modelhost.NewStaticHost("verify-audio-host", "audio verify ok"))
-	hostRegistry.Register("Video-Understanding-Specialist-01", modelhost.NewStaticHost("verify-video-host", "video verify ok"))
-	hostRegistry.Register("Document-Layout-OCR-Specialist-01", modelhost.NewStaticHost("verify-document-host", "document verify ok"))
-	hostRegistry.Register("Multimodal-Evidence-Fusion-Specialist-01", modelhost.NewStaticHost("verify-fusion-host", "fusion verify ok"))
+	hostRegistry.Register("Parent-Generalist-30B", modelhost.NewPromptHost("verify-parent-host"))
+	hostRegistry.Register("Image-Analysis-Specialist-01", modelhost.NewAssetSummaryHost("verify-image-host", "image"))
+	hostRegistry.Register("Audio-Transcription-Specialist-01", modelhost.NewAssetSummaryHost("verify-audio-host", "audio"))
+	hostRegistry.Register("Video-Understanding-Specialist-01", modelhost.NewAssetSummaryHost("verify-video-host", "video"))
+	hostRegistry.Register("Document-Layout-OCR-Specialist-01", modelhost.NewAssetSummaryHost("verify-document-host", "document"))
+	hostRegistry.Register("Multimodal-Evidence-Fusion-Specialist-01", modelhost.NewFusionHost("verify-fusion-host"))
 	executionService := execution.NewService(logger, hostRegistry)
+	growthService := growth.NewService(store, logger)
 	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
 	routingDecision := routingService.DecideTask(ctx, routing.Input{
 		TaskSummary:     "verify multimodal routing",
@@ -108,6 +110,28 @@ func main() {
 			"handled", result.HostResult.Handled,
 		)
 	}
+
+	growthResult, err := growthService.StageExperiment(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, growth.Assessment{
+		AbilityName:       "multimodal_grounding",
+		GapSummary:        "Verify governed ability-growth storage and staging.",
+		EvidenceSummary:   "Verification path confirms current multimodal ability remains scaffold-level.",
+		TriedMemoryFix:    true,
+		TriedRoutingFix:   true,
+		TriedPromptFix:    true,
+		PreferredSurface:  "modality_branch",
+		RequestedBy:       cfg.Harness.DefaultCreatedBy,
+		ParentApprovedBy:  "parent:verify",
+		HarnessVerifiedBy: cfg.Harness.DefaultCreatedBy,
+		Notes:             "verify governed ability-growth path",
+	})
+	if err != nil {
+		logger.Error("ability-growth verify failed", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("ability-growth verify ok",
+		"status", growthResult.Status,
+		"experiment_id", growthResult.ExperimentID,
+	)
 
 	logger.Info("verify complete")
 }
