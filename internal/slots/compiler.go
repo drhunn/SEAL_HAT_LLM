@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -181,230 +180,540 @@ func parseMarkdownFile(file File) (*markdownNode, error) {
 }
 
 func compileIdentity(doc *markdownNode, bundle *Bundle) error {
-	bundle.Identity.Name = scalarContent(requireChild(doc, "name"))
+	name, err := child(doc, "name")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.Name = scalarContent(name)
 	bundle.SourceMap["identity.name"] = sourceRef(doc.FileName, "name")
-	bundle.Identity.Aliases = bulletLines(requireChild(doc, "aliases"))
+
+	aliases, err := child(doc, "aliases")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.Aliases = bulletLines(aliases)
 	bundle.SourceMap["identity.aliases"] = sourceRef(doc.FileName, "aliases")
-	bundle.Identity.Domain = scalarContent(requireChild(doc, "domain"))
+
+	domain, err := child(doc, "domain")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.Domain = scalarContent(domain)
 	bundle.SourceMap["identity.domain"] = sourceRef(doc.FileName, "domain")
-	bundle.Identity.Role = scalarContent(requireChild(doc, "role"))
+
+	role, err := child(doc, "role")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.Role = scalarContent(role)
 	bundle.SourceMap["identity.role"] = sourceRef(doc.FileName, "role")
-	bundle.Identity.AuthorityBoundary = scalarContent(requireChild(doc, "authority_boundary"))
+
+	authority, err := child(doc, "authority_boundary")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.AuthorityBoundary = scalarContent(authority)
 	bundle.SourceMap["identity.authority_boundary"] = sourceRef(doc.FileName, "authority_boundary")
-	bundle.Identity.AllowedScope = bulletLines(requireChild(doc, "allowed_scope"))
+
+	allowed, err := child(doc, "allowed_scope")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.AllowedScope = bulletLines(allowed)
 	bundle.SourceMap["identity.allowed_scope"] = sourceRef(doc.FileName, "allowed_scope")
-	bundle.Identity.ForbiddenScope = bulletLines(requireChild(doc, "forbidden_scope"))
+
+	forbidden, err := child(doc, "forbidden_scope")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.ForbiddenScope = bulletLines(forbidden)
 	bundle.SourceMap["identity.forbidden_scope"] = sourceRef(doc.FileName, "forbidden_scope")
-	bundle.Identity.EscalateTo = scalarContent(requireChild(doc, "escalate_to"))
+
+	escalate, err := child(doc, "escalate_to")
+	if err != nil {
+		return err
+	}
+	bundle.Identity.EscalateTo = scalarContent(escalate)
 	bundle.SourceMap["identity.escalate_to"] = sourceRef(doc.FileName, "escalate_to")
 	return nil
 }
 
 func compileSoul(doc *markdownNode, bundle *Bundle) error {
-	bundle.Soul.Tone = scalarContent(requireChild(doc, "tone"))
+	tone, err := child(doc, "tone")
+	if err != nil {
+		return err
+	}
+	bundle.Soul.Tone = scalarContent(tone)
 	bundle.SourceMap["soul.tone"] = sourceRef(doc.FileName, "tone")
-	bundle.Soul.Values = bulletLines(requireChild(doc, "values"))
+
+	values, err := child(doc, "values")
+	if err != nil {
+		return err
+	}
+	bundle.Soul.Values = bulletLines(values)
 	bundle.SourceMap["soul.values"] = sourceRef(doc.FileName, "values")
-	caution := requireChild(doc, "caution_profile")
+
+	caution, err := child(doc, "caution_profile")
+	if err != nil {
+		return err
+	}
 	high, moderate := parseCautionProfile(caution)
 	bundle.Soul.CautionProfileHigh = high
 	bundle.Soul.CautionProfileModerate = moderate
 	bundle.SourceMap["soul.caution_profile_high"] = sourceRef(doc.FileName, "caution_profile")
 	bundle.SourceMap["soul.caution_profile_moderate"] = sourceRef(doc.FileName, "caution_profile")
-	bundle.Soul.DecisionStyle = bulletLines(requireChild(doc, "decision_style"))
+
+	decisionStyle, err := child(doc, "decision_style")
+	if err != nil {
+		return err
+	}
+	bundle.Soul.DecisionStyle = bulletLines(decisionStyle)
 	bundle.SourceMap["soul.decision_style"] = sourceRef(doc.FileName, "decision_style")
-	bundle.Soul.RiskTolerance = scalarContent(requireChild(doc, "risk_tolerance"))
+
+	riskTolerance, err := child(doc, "risk_tolerance")
+	if err != nil {
+		return err
+	}
+	bundle.Soul.RiskTolerance = scalarContent(riskTolerance)
 	bundle.SourceMap["soul.risk_tolerance"] = sourceRef(doc.FileName, "risk_tolerance")
 	return nil
 }
 
 func compileAgents(doc *markdownNode, bundle *Bundle) error {
-	bundle.Agents.Mission = scalarContent(requireChild(doc, "mission"))
+	mission, err := child(doc, "mission")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.Mission = scalarContent(mission)
 	bundle.SourceMap["agents.mission"] = sourceRef(doc.FileName, "mission")
-	bundle.Agents.LaneBoundaries = bulletLines(requireChild(doc, "lane_boundaries"))
+
+	laneBoundaries, err := child(doc, "lane_boundaries")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.LaneBoundaries = bulletLines(laneBoundaries)
 	bundle.SourceMap["agents.lane_boundaries"] = sourceRef(doc.FileName, "lane_boundaries")
-	bundle.Agents.EscalationRules = bulletLines(requireChild(doc, "escalation_rules"))
+
+	escalationRules, err := child(doc, "escalation_rules")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.EscalationRules = bulletLines(escalationRules)
 	bundle.SourceMap["agents.escalation_rules"] = sourceRef(doc.FileName, "escalation_rules")
-	bundle.Agents.DecisionRules = bulletLines(requireChild(doc, "decision_rules"))
+
+	decisionRules, err := child(doc, "decision_rules")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.DecisionRules = bulletLines(decisionRules)
 	bundle.SourceMap["agents.decision_rules"] = sourceRef(doc.FileName, "decision_rules")
-	bundle.Agents.SelfModificationRules = statementLines(requireChild(doc, "self_modification_rules"))
+
+	selfModificationRules, err := child(doc, "self_modification_rules")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.SelfModificationRules = statementLines(selfModificationRules)
 	bundle.SourceMap["agents.self_modification_rules"] = sourceRef(doc.FileName, "self_modification_rules")
-	bundle.Agents.MandatoryPostmortemRule = scalarContent(requireChild(doc, "mandatory_postmortem_rule"))
+
+	mandatoryPostmortemRule, err := child(doc, "mandatory_postmortem_rule")
+	if err != nil {
+		return err
+	}
+	bundle.Agents.MandatoryPostmortemRule = scalarContent(mandatoryPostmortemRule)
 	bundle.SourceMap["agents.mandatory_postmortem_rule"] = sourceRef(doc.FileName, "mandatory_postmortem_rule")
 	return nil
 }
 
 func compileTools(doc *markdownNode, bundle *Bundle) error {
-	bundle.Tools.AllowedTools = bulletLines(requireChild(doc, "allowed_tools"))
+	allowedTools, err := child(doc, "allowed_tools")
+	if err != nil {
+		return err
+	}
+	bundle.Tools.AllowedTools = bulletLines(allowedTools)
 	bundle.SourceMap["tools.allowed_tools"] = sourceRef(doc.FileName, "allowed_tools")
-	bundle.Tools.ToolOrdering = numberedLines(requireChild(doc, "tool_ordering"))
+
+	toolOrdering, err := child(doc, "tool_ordering")
+	if err != nil {
+		return err
+	}
+	bundle.Tools.ToolOrdering = numberedLines(toolOrdering)
 	bundle.SourceMap["tools.tool_ordering"] = sourceRef(doc.FileName, "tool_ordering")
-	bundle.Tools.ToolConstraints = bulletLines(requireChild(doc, "tool_constraints"))
+
+	toolConstraints, err := child(doc, "tool_constraints")
+	if err != nil {
+		return err
+	}
+	bundle.Tools.ToolConstraints = bulletLines(toolConstraints)
 	bundle.SourceMap["tools.tool_constraints"] = sourceRef(doc.FileName, "tool_constraints")
-	bundle.Tools.FallbackBehavior = bulletLines(requireChild(doc, "fallback_behavior"))
+
+	fallbackBehavior, err := child(doc, "fallback_behavior")
+	if err != nil {
+		return err
+	}
+	bundle.Tools.FallbackBehavior = bulletLines(fallbackBehavior)
 	bundle.SourceMap["tools.fallback_behavior"] = sourceRef(doc.FileName, "fallback_behavior")
 	return nil
 }
 
 func compileSkills(doc *markdownNode, bundle *Bundle) error {
-	core := requireChild(doc, "core_skills")
-	for i, child := range core.Children {
-		name := scalarContent(child)
+	core, err := child(doc, "core_skills")
+	if err != nil {
+		return err
+	}
+	for i, childNode := range core.Children {
+		trigger, err := child(childNode, "trigger")
+		if err != nil {
+			return err
+		}
+		procedure, err := child(childNode, "procedure")
+		if err != nil {
+			return err
+		}
+		successCheck, err := child(childNode, "success_check")
+		if err != nil {
+			return err
+		}
 		record := SkillRecord{
-			Name:         name,
-			Trigger:      scalarContent(requireChild(child, "trigger")),
-			Procedure:    numberedLines(requireChild(child, "procedure")),
-			SuccessCheck: bulletLines(requireChild(child, "success_check")),
+			Name:         scalarContent(childNode),
+			Trigger:      scalarContent(trigger),
+			Procedure:    numberedLines(procedure),
+			SuccessCheck: bulletLines(successCheck),
 		}
 		bundle.Skills.Core = append(bundle.Skills.Core, record)
-		bundle.SourceMap[fmt.Sprintf("skills.core[%d].name", i)] = sourceRef(doc.FileName, "core_skills", child.Title)
-		bundle.SourceMap[fmt.Sprintf("skills.core[%d].trigger", i)] = sourceRef(doc.FileName, "core_skills", child.Title, "trigger")
-		bundle.SourceMap[fmt.Sprintf("skills.core[%d].procedure", i)] = sourceRef(doc.FileName, "core_skills", child.Title, "procedure")
-		bundle.SourceMap[fmt.Sprintf("skills.core[%d].success_check", i)] = sourceRef(doc.FileName, "core_skills", child.Title, "success_check")
+		bundle.SourceMap[fmt.Sprintf("skills.core[%d].name", i)] = sourceRef(doc.FileName, "core_skills", childNode.Title)
+		bundle.SourceMap[fmt.Sprintf("skills.core[%d].trigger", i)] = sourceRef(doc.FileName, "core_skills", childNode.Title, "trigger")
+		bundle.SourceMap[fmt.Sprintf("skills.core[%d].procedure", i)] = sourceRef(doc.FileName, "core_skills", childNode.Title, "procedure")
+		bundle.SourceMap[fmt.Sprintf("skills.core[%d].success_check", i)] = sourceRef(doc.FileName, "core_skills", childNode.Title, "success_check")
 	}
 
-	playbooks := requireChild(doc, "playbooks")
-	for i, child := range playbooks.Children {
+	playbooks, err := child(doc, "playbooks")
+	if err != nil {
+		return err
+	}
+	for i, childNode := range playbooks.Children {
+		trigger, err := child(childNode, "trigger")
+		if err != nil {
+			return err
+		}
+		procedure, err := child(childNode, "procedure")
+		if err != nil {
+			return err
+		}
 		record := PlaybookRecord{
-			Name:      scalarContent(child),
-			Trigger:   scalarContent(requireChild(child, "trigger")),
-			Procedure: numberedLines(requireChild(child, "procedure")),
+			Name:      scalarContent(childNode),
+			Trigger:   scalarContent(trigger),
+			Procedure: numberedLines(procedure),
 		}
 		bundle.Skills.Playbooks = append(bundle.Skills.Playbooks, record)
-		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].name", i)] = sourceRef(doc.FileName, "playbooks", child.Title)
-		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].trigger", i)] = sourceRef(doc.FileName, "playbooks", child.Title, "trigger")
-		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].procedure", i)] = sourceRef(doc.FileName, "playbooks", child.Title, "procedure")
+		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].name", i)] = sourceRef(doc.FileName, "playbooks", childNode.Title)
+		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].trigger", i)] = sourceRef(doc.FileName, "playbooks", childNode.Title, "trigger")
+		bundle.SourceMap[fmt.Sprintf("skills.playbooks[%d].procedure", i)] = sourceRef(doc.FileName, "playbooks", childNode.Title, "procedure")
 	}
 
-	bundle.Skills.FailureRecoveryPatterns = bulletLines(requireChild(doc, "failure_recovery_patterns"))
+	failureRecoveryPatterns, err := child(doc, "failure_recovery_patterns")
+	if err != nil {
+		return err
+	}
+	bundle.Skills.FailureRecoveryPatterns = bulletLines(failureRecoveryPatterns)
 	bundle.SourceMap["skills.failure_recovery_patterns"] = sourceRef(doc.FileName, "failure_recovery_patterns")
 	return nil
 }
 
 func compilePrompt(doc *markdownNode, bundle *Bundle) error {
-	templates := requireChild(doc, "task_templates")
-	for i, child := range templates.Children {
+	templates, err := child(doc, "task_templates")
+	if err != nil {
+		return err
+	}
+	for i, childNode := range templates.Children {
+		purpose, err := child(childNode, "purpose")
+		if err != nil {
+			return err
+		}
+		body, err := child(childNode, "body")
+		if err != nil {
+			return err
+		}
 		record := PromptTemplate{
-			Name:    scalarContent(child),
-			Purpose: scalarContent(requireChild(child, "purpose")),
-			Body:    contentLines(requireChild(child, "body")),
+			Name:    scalarContent(childNode),
+			Purpose: scalarContent(purpose),
+			Body:    contentLines(body),
 		}
 		bundle.Prompt.TaskTemplates = append(bundle.Prompt.TaskTemplates, record)
-		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].name", i)] = sourceRef(doc.FileName, "task_templates", child.Title)
-		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].purpose", i)] = sourceRef(doc.FileName, "task_templates", child.Title, "purpose")
-		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].body", i)] = sourceRef(doc.FileName, "task_templates", child.Title, "body")
+		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].name", i)] = sourceRef(doc.FileName, "task_templates", childNode.Title)
+		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].purpose", i)] = sourceRef(doc.FileName, "task_templates", childNode.Title, "purpose")
+		bundle.SourceMap[fmt.Sprintf("prompt.task_templates[%d].body", i)] = sourceRef(doc.FileName, "task_templates", childNode.Title, "body")
 	}
 
-	patterns := requireChild(doc, "command_patterns")
-	for i, child := range patterns.Children {
+	patterns, err := child(doc, "command_patterns")
+	if err != nil {
+		return err
+	}
+	for i, childNode := range patterns.Children {
+		purpose, err := child(childNode, "purpose")
+		if err != nil {
+			return err
+		}
+		body, err := child(childNode, "body")
+		if err != nil {
+			return err
+		}
 		record := PromptTemplate{
-			Name:    scalarContent(child),
-			Purpose: scalarContent(requireChild(child, "purpose")),
-			Body:    contentLines(requireChild(child, "body")),
+			Name:    scalarContent(childNode),
+			Purpose: scalarContent(purpose),
+			Body:    contentLines(body),
 		}
 		bundle.Prompt.CommandPatterns = append(bundle.Prompt.CommandPatterns, record)
-		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].name", i)] = sourceRef(doc.FileName, "command_patterns", child.Title)
-		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].purpose", i)] = sourceRef(doc.FileName, "command_patterns", child.Title, "purpose")
-		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].body", i)] = sourceRef(doc.FileName, "command_patterns", child.Title, "body")
+		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].name", i)] = sourceRef(doc.FileName, "command_patterns", childNode.Title)
+		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].purpose", i)] = sourceRef(doc.FileName, "command_patterns", childNode.Title, "purpose")
+		bundle.SourceMap[fmt.Sprintf("prompt.command_patterns[%d].body", i)] = sourceRef(doc.FileName, "command_patterns", childNode.Title, "body")
 	}
 
-	checklists := requireChild(doc, "checklists")
-	for i, child := range checklists.Children {
-		name, items := parseChecklist(child)
+	checklists, err := child(doc, "checklists")
+	if err != nil {
+		return err
+	}
+	for i, childNode := range checklists.Children {
+		name, items := parseChecklist(childNode)
 		bundle.Prompt.Checklists = append(bundle.Prompt.Checklists, Checklist{Name: name, Items: items})
-		bundle.SourceMap[fmt.Sprintf("prompt.checklists[%d].name", i)] = sourceRef(doc.FileName, "checklists", child.Title)
-		bundle.SourceMap[fmt.Sprintf("prompt.checklists[%d].items", i)] = sourceRef(doc.FileName, "checklists", child.Title)
+		bundle.SourceMap[fmt.Sprintf("prompt.checklists[%d].name", i)] = sourceRef(doc.FileName, "checklists", childNode.Title)
+		bundle.SourceMap[fmt.Sprintf("prompt.checklists[%d].items", i)] = sourceRef(doc.FileName, "checklists", childNode.Title)
 	}
 	return nil
 }
 
 func compileMemory(doc *markdownNode, bundle *Bundle) error {
-	bundle.Memory.CurrentFocus = bulletLines(requireChild(doc, "current_focus"))
+	currentFocus, err := child(doc, "current_focus")
+	if err != nil {
+		return err
+	}
+	bundle.Memory.CurrentFocus = bulletLines(currentFocus)
 	bundle.SourceMap["memory.current_focus"] = sourceRef(doc.FileName, "current_focus")
-	bundle.Memory.DurableDecisions = bulletLines(requireChild(doc, "durable_decisions"))
+
+	durableDecisions, err := child(doc, "durable_decisions")
+	if err != nil {
+		return err
+	}
+	bundle.Memory.DurableDecisions = bulletLines(durableDecisions)
 	bundle.SourceMap["memory.durable_decisions"] = sourceRef(doc.FileName, "durable_decisions")
-	pointers, err := parseMemoryPointers(requireChild(doc, "memory_pointers"))
+
+	memoryPointers, err := child(doc, "memory_pointers")
+	if err != nil {
+		return err
+	}
+	pointers, err := parseMemoryPointers(memoryPointers)
 	if err != nil {
 		return fmt.Errorf("memory pointers: %w", err)
 	}
 	bundle.Memory.Pointers = pointers
 	bundle.SourceMap["memory.pointers"] = sourceRef(doc.FileName, "memory_pointers")
-	bundle.Memory.ActiveConstraints = bulletLines(requireChild(doc, "active_constraints"))
+
+	activeConstraints, err := child(doc, "active_constraints")
+	if err != nil {
+		return err
+	}
+	bundle.Memory.ActiveConstraints = bulletLines(activeConstraints)
 	bundle.SourceMap["memory.active_constraints"] = sourceRef(doc.FileName, "active_constraints")
 	return nil
 }
 
 func compileHeartbeat(doc *markdownNode, bundle *Bundle) error {
-	bundle.Heartbeat.WatchTopics = bulletLines(requireChild(doc, "watch_topics"))
+	watchTopics, err := child(doc, "watch_topics")
+	if err != nil {
+		return err
+	}
+	bundle.Heartbeat.WatchTopics = bulletLines(watchTopics)
 	bundle.SourceMap["heartbeat.watch_topics"] = sourceRef(doc.FileName, "watch_topics")
-	bundle.Heartbeat.ApprovedSources = bulletLines(requireChild(doc, "approved_sources"))
+
+	approvedSources, err := child(doc, "approved_sources")
+	if err != nil {
+		return err
+	}
+	bundle.Heartbeat.ApprovedSources = bulletLines(approvedSources)
 	bundle.SourceMap["heartbeat.approved_sources"] = sourceRef(doc.FileName, "approved_sources")
-	bundle.Heartbeat.Cadence = bulletLines(requireChild(doc, "cadence"))
+
+	cadence, err := child(doc, "cadence")
+	if err != nil {
+		return err
+	}
+	bundle.Heartbeat.Cadence = bulletLines(cadence)
 	bundle.SourceMap["heartbeat.cadence"] = sourceRef(doc.FileName, "cadence")
-	bundle.Heartbeat.PromotionRules = bulletLines(requireChild(doc, "promotion_rules"))
+
+	promotionRules, err := child(doc, "promotion_rules")
+	if err != nil {
+		return err
+	}
+	bundle.Heartbeat.PromotionRules = bulletLines(promotionRules)
 	bundle.SourceMap["heartbeat.promotion_rules"] = sourceRef(doc.FileName, "promotion_rules")
-	bundle.Heartbeat.StopConditions = bulletLines(requireChild(doc, "stop_conditions"))
+
+	stopConditions, err := child(doc, "stop_conditions")
+	if err != nil {
+		return err
+	}
+	bundle.Heartbeat.StopConditions = bulletLines(stopConditions)
 	bundle.SourceMap["heartbeat.stop_conditions"] = sourceRef(doc.FileName, "stop_conditions")
 	return nil
 }
 
 func compileDreams(doc *markdownNode, bundle *Bundle) error {
-	bundle.Dreams.DistilledPatterns = bulletLines(requireChild(doc, "distilled_patterns"))
+	distilledPatterns, err := child(doc, "distilled_patterns")
+	if err != nil {
+		return err
+	}
+	bundle.Dreams.DistilledPatterns = bulletLines(distilledPatterns)
 	bundle.SourceMap["dreams.distilled_patterns"] = sourceRef(doc.FileName, "distilled_patterns")
-	bundle.Dreams.CandidatePromotions = bulletLines(requireChild(doc, "candidate_promotions"))
+
+	candidatePromotions, err := child(doc, "candidate_promotions")
+	if err != nil {
+		return err
+	}
+	bundle.Dreams.CandidatePromotions = bulletLines(candidatePromotions)
 	bundle.SourceMap["dreams.candidate_promotions"] = sourceRef(doc.FileName, "candidate_promotions")
-	bundle.Dreams.DiscardedNoise = bulletLines(requireChild(doc, "discarded_noise"))
+
+	discardedNoise, err := child(doc, "discarded_noise")
+	if err != nil {
+		return err
+	}
+	bundle.Dreams.DiscardedNoise = bulletLines(discardedNoise)
 	bundle.SourceMap["dreams.discarded_noise"] = sourceRef(doc.FileName, "discarded_noise")
-	bundle.Dreams.OpenReviewItems = bulletLines(requireChild(doc, "open_review_items"))
+
+	openReviewItems, err := child(doc, "open_review_items")
+	if err != nil {
+		return err
+	}
+	bundle.Dreams.OpenReviewItems = bulletLines(openReviewItems)
 	bundle.SourceMap["dreams.open_review_items"] = sourceRef(doc.FileName, "open_review_items")
 	return nil
 }
 
 func compilePostmortem(doc *markdownNode, bundle *Bundle) error {
-	bundle.PostmortemTemplate.IncidentID = scalarContent(requireChild(doc, "incident_id"))
+	incidentID, err := child(doc, "incident_id")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.IncidentID = scalarContent(incidentID)
 	bundle.SourceMap["postmortem_template.incident_id"] = sourceRef(doc.FileName, "incident_id")
-	bundle.PostmortemTemplate.Date = scalarContent(requireChild(doc, "date"))
+
+	date, err := child(doc, "date")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.Date = scalarContent(date)
 	bundle.SourceMap["postmortem_template.date"] = sourceRef(doc.FileName, "date")
-	bundle.PostmortemTemplate.ModelID = scalarContent(requireChild(doc, "model_id"))
+
+	modelID, err := child(doc, "model_id")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.ModelID = scalarContent(modelID)
 	bundle.SourceMap["postmortem_template.model_id"] = sourceRef(doc.FileName, "model_id")
-	bundle.PostmortemTemplate.ModelRole = scalarContent(requireChild(doc, "model_role"))
+
+	modelRole, err := child(doc, "model_role")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.ModelRole = scalarContent(modelRole)
 	bundle.SourceMap["postmortem_template.model_role"] = sourceRef(doc.FileName, "model_role")
-	bundle.PostmortemTemplate.TaskSummary = scalarContent(requireChild(doc, "task_summary"))
+
+	taskSummary, err := child(doc, "task_summary")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.TaskSummary = scalarContent(taskSummary)
 	bundle.SourceMap["postmortem_template.task_summary"] = sourceRef(doc.FileName, "task_summary")
-	bundle.PostmortemTemplate.ExpectedBehavior = scalarContent(requireChild(doc, "expected_behavior"))
+
+	expectedBehavior, err := child(doc, "expected_behavior")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.ExpectedBehavior = scalarContent(expectedBehavior)
 	bundle.SourceMap["postmortem_template.expected_behavior"] = sourceRef(doc.FileName, "expected_behavior")
-	bundle.PostmortemTemplate.ActualBehavior = scalarContent(requireChild(doc, "actual_behavior"))
+
+	actualBehavior, err := child(doc, "actual_behavior")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.ActualBehavior = scalarContent(actualBehavior)
 	bundle.SourceMap["postmortem_template.actual_behavior"] = sourceRef(doc.FileName, "actual_behavior")
-	bundle.PostmortemTemplate.WhatWentWrong = scalarContent(requireChild(doc, "what_went_wrong"))
+
+	whatWentWrong, err := child(doc, "what_went_wrong")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.WhatWentWrong = scalarContent(whatWentWrong)
 	bundle.SourceMap["postmortem_template.what_went_wrong"] = sourceRef(doc.FileName, "what_went_wrong")
-	bundle.PostmortemTemplate.FailureClassification = bulletLines(requireChild(doc, "failure_classification"))
+
+	failureClassification, err := child(doc, "failure_classification")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.FailureClassification = bulletLines(failureClassification)
 	bundle.SourceMap["postmortem_template.failure_classification"] = sourceRef(doc.FileName, "failure_classification")
-	bundle.PostmortemTemplate.RootCause = scalarContent(requireChild(doc, "root_cause"))
+
+	rootCause, err := child(doc, "root_cause")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.RootCause = scalarContent(rootCause)
 	bundle.SourceMap["postmortem_template.root_cause"] = sourceRef(doc.FileName, "root_cause")
-	bundle.PostmortemTemplate.MissedEvidenceOrStep = scalarContent(requireChild(doc, "missed_evidence_or_step"))
+
+	missedEvidenceOrStep, err := child(doc, "missed_evidence_or_step")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.MissedEvidenceOrStep = scalarContent(missedEvidenceOrStep)
 	bundle.SourceMap["postmortem_template.missed_evidence_or_step"] = sourceRef(doc.FileName, "missed_evidence_or_step")
-	bundle.PostmortemTemplate.Preventable = scalarContent(requireChild(doc, "preventable"))
+
+	preventable, err := child(doc, "preventable")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.Preventable = scalarContent(preventable)
 	bundle.SourceMap["postmortem_template.preventable"] = sourceRef(doc.FileName, "preventable")
-	bundle.PostmortemTemplate.Correction = scalarContent(requireChild(doc, "correction"))
+
+	correction, err := child(doc, "correction")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.Correction = scalarContent(correction)
 	bundle.SourceMap["postmortem_template.correction"] = sourceRef(doc.FileName, "correction")
-	bundle.PostmortemTemplate.RecommendedSlotOrSystemChange = bulletLines(requireChild(doc, "recommended_slot_or_system_change"))
+
+	recommendedSlotOrSystemChange, err := child(doc, "recommended_slot_or_system_change")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.RecommendedSlotOrSystemChange = bulletLines(recommendedSlotOrSystemChange)
 	bundle.SourceMap["postmortem_template.recommended_slot_or_system_change"] = sourceRef(doc.FileName, "recommended_slot_or_system_change")
-	bundle.PostmortemTemplate.RequiresHarnessReview = scalarContent(requireChild(doc, "requires_harness_review"))
+
+	requiresHarnessReview, err := child(doc, "requires_harness_review")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.RequiresHarnessReview = scalarContent(requiresHarnessReview)
 	bundle.SourceMap["postmortem_template.requires_harness_review"] = sourceRef(doc.FileName, "requires_harness_review")
-	bundle.PostmortemTemplate.RequiresParentReview = scalarContent(requireChild(doc, "requires_parent_review"))
+
+	requiresParentReview, err := child(doc, "requires_parent_review")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.RequiresParentReview = scalarContent(requiresParentReview)
 	bundle.SourceMap["postmortem_template.requires_parent_review"] = sourceRef(doc.FileName, "requires_parent_review")
-	bundle.PostmortemTemplate.RegressionTestNeeded = scalarContent(requireChild(doc, "regression_test_needed"))
+
+	regressionTestNeeded, err := child(doc, "regression_test_needed")
+	if err != nil {
+		return err
+	}
+	bundle.PostmortemTemplate.RegressionTestNeeded = scalarContent(regressionTestNeeded)
 	bundle.SourceMap["postmortem_template.regression_test_needed"] = sourceRef(doc.FileName, "regression_test_needed")
 	return nil
 }
 
-func requireChild(parent *markdownNode, title string) *markdownNode {
-	for _, child := range parent.Children {
-		if strings.EqualFold(child.Title, title) {
-			return child
+func child(parent *markdownNode, title string) (*markdownNode, error) {
+	for _, candidate := range parent.Children {
+		if strings.EqualFold(candidate.Title, title) {
+			return candidate, nil
 		}
 	}
-	panic(fmt.Sprintf("missing section %q in %s", title, parent.FileName))
+	return nil, fmt.Errorf("missing section %q in %s", title, parent.FileName)
 }
 
 func sourceRef(fileName string, headings ...string) string {
@@ -618,12 +927,4 @@ func stripNumbered(line string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(matches[1]), true
-}
-
-func MustAtoi(value string) int {
-	n, err := strconv.Atoi(value)
-	if err != nil {
-		panic(err)
-	}
-	return n
 }
