@@ -8,12 +8,18 @@ This document makes multimodality a first-class architectural direction during t
 ---
 
 ## current reality
-Right now the repository is still primarily text-first:
+Right now the repository is still primarily text-first in its live model-host behavior, but it is no longer completely text-only in runtime scaffolding.
+
+What now exists:
 - text slot files
 - text memory summaries
 - text postmortems
 - text eval cases
 - text-oriented HAT corpus generation
+- modality metadata types in Go
+- modality-aware routing decisions in Go
+- multimodal execution-plan scaffolding in Go
+- multimodal memory SQL scaffolding
 
 This document establishes the forward architecture so the current design does not ossify around text-only assumptions.
 
@@ -66,6 +72,13 @@ Example routing outcomes:
 - audio transcription specialist handling
 - multimodal evidence fusion specialist handling
 - parent-led multi-specialist arbitration
+
+The current runtime now includes a first wiring pass for:
+- modality metadata types
+- modality-aware routing decisions
+- multimodal execution-plan selection
+
+That is still scaffolding, but it is now execution-aware scaffolding rather than architecture-only prose.
 
 ---
 
@@ -123,6 +136,26 @@ A practical early design is:
 
 ---
 
+## multimodal execution
+A multimodal execution path should support:
+- modality-aware routing input
+- execution-plan selection by primary modality
+- cross-modal fusion selection when multiple modalities are present
+- fallback to parent when modality is unknown and text-first fallback is allowed
+- parent review when cross-modal grounding is requested but inputs are incomplete
+
+The current Go scaffold now includes a first execution-planning service that can choose between:
+- parent text-first handling
+- image analysis specialist
+- audio transcription specialist
+- video understanding specialist
+- document/OCR specialist
+- multimodal evidence-fusion specialist
+
+This is still planning/scaffolding, not yet a full live model-host integration.
+
+---
+
 ## multimodal HAT direction
 Harness-Aware Training should eventually support:
 - modality-aware slot prompts
@@ -150,6 +183,7 @@ Future eval families should include:
 - multimodal contradiction handling
 - multimodal governance-pressure refusal
 - multimodal specialist suitability
+- multimodal execution-plan selection quality
 
 ---
 
@@ -164,6 +198,7 @@ Recommended early implementation order:
 ### phase 2
 - add multimodal memory record linking
 - add modality-aware routing decisions
+- add multimodal execution-plan selection
 - add multimodal eval taxonomy additions
 
 ### phase 3
@@ -178,12 +213,13 @@ Recommended early implementation order:
 ---
 
 ## summary
-The repository is still text-first in implementation, but multimodality is now part of the intended architecture.
+The repository is still text-first in full implementation, but multimodality is now part of both the intended architecture and the live runtime scaffolding.
 
 The goal is not to replace the current MM-ELLS governance model.
 The goal is to extend it cleanly so that:
 - the parent becomes modality-aware
 - specialists can become modality-specialized
+- execution becomes modality-aware
 - memory becomes multimodal-aware
 - retrieval becomes cross-modal
 - HAT remains governance-preserving across all modalities
