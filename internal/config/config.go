@@ -18,14 +18,14 @@ type AppConfig struct {
 		DSN string `toml:"dsn"`
 	} `toml:"database"`
 	Runtime struct {
-		SpecialistID               string `toml:"specialist_id"`
-		Namespace                  string `toml:"namespace"`
-		SlotsRoot                  string `toml:"slots_root"`
-		ConfigRoot                 string `toml:"config_root"`
-		RequestTimeoutSeconds      int    `toml:"request_timeout_seconds"`
-		DefaultPrimaryModality     string `toml:"default_primary_modality"`
-		AllowTextOnlyFallback      bool   `toml:"allow_text_only_fallback"`
-		EnableMultimodalSmokeTest  bool   `toml:"enable_multimodal_smoke_test"`
+		SpecialistID              string `toml:"specialist_id"`
+		Namespace                 string `toml:"namespace"`
+		SlotsRoot                 string `toml:"slots_root"`
+		ConfigRoot                string `toml:"config_root"`
+		RequestTimeoutSeconds     int    `toml:"request_timeout_seconds"`
+		DefaultPrimaryModality    string `toml:"default_primary_modality"`
+		AllowTextOnlyFallback     bool   `toml:"allow_text_only_fallback"`
+		EnableMultimodalSmokeTest bool   `toml:"enable_multimodal_smoke_test"`
 	} `toml:"runtime"`
 	Harness struct {
 		AutoCreatePostmortems bool   `toml:"auto_create_postmortems"`
@@ -66,12 +66,6 @@ func Load(path string) (*AppConfig, error) {
 	}
 	if cfg.Runtime.DefaultPrimaryModality == "" {
 		cfg.Runtime.DefaultPrimaryModality = "text"
-	}
-	if !cfg.Runtime.AllowTextOnlyFallback {
-		cfg.Runtime.AllowTextOnlyFallback = true
-	}
-	if !cfg.Runtime.EnableMultimodalSmokeTest {
-		cfg.Runtime.EnableMultimodalSmokeTest = true
 	}
 
 	return &cfg, nil
