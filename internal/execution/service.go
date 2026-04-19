@@ -2,20 +2,23 @@ package execution
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 )
 
 type Request struct {
-	TaskSummary                string
-	TaskClass                  string
-	PrimaryModality            modality.Type
-	SecondaryModalities        []modality.Type
+	TaskSummary                 string
+	TaskClass                   string
+	PrimaryModality             modality.Type
+	SecondaryModalities         []modality.Type
 	CrossModalGroundingRequired bool
-	AllowTextOnlyFallback      bool
-	PreferredExecutor          string
-	AssetRefs                  []string
+	AllowTextOnlyFallback       bool
+	PreferredExecutor           string
+	AssetRefs                   []string
+	Prompt                      string
 }
 
 type Plan struct {
@@ -27,12 +30,18 @@ type Plan struct {
 	Notes                string
 }
 
-type Service struct {
-	logger *slog.Logger
+type Result struct {
+	Plan       Plan
+	HostResult modelhost.Result
 }
 
-func NewService(logger *slog.Logger) *Service {
-	return &Service{logger: logger}
+type Service struct {
+	logger *slog.Logger
+	hosts  *modelhost.Registry
+}
+
+func NewService(logger *slog.Logger, hosts *modelhost.Registry) *Service {
+	return &Service{logger: logger, hosts: hosts}
 }
 
 func (s *Service) Plan(ctx context.Context, req Request) Plan {
@@ -93,4 +102,31 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	)
 
 	return plan
+}
+
+func (s *Service) Execute(ctx context.Context, req Request) (Result, error) {
+	plan := s.Plan(ctx, req)
+	if s.hosts == nil {
+		return Result{}, fmt.Errorf("execution hosts are not configured")
+	}
+
+	hostResult, err := s.hosts.Execute(ctx, plan.ChosenExecutor, modelhost.Request{
+		TaskSummary:   req.TaskSummary,
+		TaskClass:     req.TaskClass,
+		ExecutionMode: plan.ExecutionMode,
+		Executor:      plan.ChosenExecutor,
+		AssetRefs:     req.AssetRefs,
+		Prompt:        req.Prompt,
+	})
+	if err != nil {
+		return Result{}, err
+	}
+
+	s.logger.InfoContext(ctx, "execution result",
+		"executor", plan.ChosenExecutor,
+		"host", hostResult.HostName,
+		"handled", hostResult.Handled,
+	)
+
+	return Result{Plan: plan, HostResult: hostResult}, nil
 }
