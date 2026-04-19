@@ -10,7 +10,10 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 )
 
@@ -60,6 +63,36 @@ func main() {
 		logger.Warn("retrieval smoke test unavailable", "err", err)
 	} else {
 		logger.Info("retrieval smoke test ok")
+	}
+
+	routingService := routing.NewService(logger)
+	executionService := execution.NewService(logger)
+	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
+	routingDecision := routingService.DecideTask(ctx, routing.Input{
+		TaskSummary:     "verify multimodal routing",
+		TaskClass:       "analysis",
+		PrimaryModality: primary,
+	})
+	logger.Info("routing verify ok",
+		"chosen_target", routingDecision.ChosenTarget,
+		"primary_modality", routingDecision.PrimaryModality,
+	)
+
+	if cfg.Runtime.EnableMultimodalSmokeTest {
+		plan := executionService.Plan(ctx, execution.Request{
+			TaskSummary:                 "verify multimodal execution",
+			TaskClass:                   "evidence_fusion",
+			PrimaryModality:             modality.Image,
+			SecondaryModalities:         []modality.Type{primary},
+			CrossModalGroundingRequired: true,
+			AllowTextOnlyFallback:       cfg.Runtime.AllowTextOnlyFallback,
+			AssetRefs:                   []string{"sandbox://verify/image-1"},
+		})
+		logger.Info("execution verify ok",
+			"executor", plan.ChosenExecutor,
+			"execution_mode", plan.ExecutionMode,
+			"requires_fusion", plan.RequiresFusion,
+		)
 	}
 
 	logger.Info("verify complete")
