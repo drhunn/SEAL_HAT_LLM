@@ -56,6 +56,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 - **Layering note**: these are runtime/software layers, not transformer layers; a model may still have dozens of internal transformer layers
 - **Developmental note**: SEAL gives them growth; the harness gives them upbringing
 - **Growth note**: the system is ability-first and DEN-inspired; add governed modules when ability gaps persist rather than treating size alone as maturity
+- **Freeze note**: freeze what is mature; train what is missing, immature, or newly added
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
 - **Memory**: Postgres + pgvector with staged promotion, contradiction staging, audit, rollback, and overflow-summary storage
 - **Retrieval**: region -> cluster -> record search
@@ -67,7 +68,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 
 - `AGENTS.md` — project-wide operating rules
 - `config/` — ACLs, slot schema, registry, routing, memory, and postmortem contracts
-- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, layering, sub-agents, developmental growth, ability-first growth, dynamic architecture, context, and runbooks
+- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, layering, sub-agents, developmental growth, ability-first growth, dynamic architecture, DEN freeze policy, context, and runbooks
 - `templates/` — specialist template pack
 - `specialists/` — instantiated specialists
 - `sql/` — schema, functions, seed, query, and verification scripts
@@ -108,6 +109,7 @@ The docs are ahead of the implementation in a few places. Start with:
 - `docs/model-lineage-strategy.md`
 - `docs/ability-first-growth-strategy.md`
 - `docs/dynamic-architecture-strategy.md`
+- `docs/den-freeze-policy.md`
 - `docs/layering-strategy.md`
 - `docs/sub-agent-strategy.md`
 - `docs/developmental-model.md`
@@ -120,4 +122,4 @@ The docs are ahead of the implementation in a few places. Start with:
 2. make the single-specialist loop runnable end to end
 3. add tests and CI before adding major new surface area
 4. use the Python HAT layer to generate governed corpora from real slots, postmortems, and evals
-5. keep the parent strong at routing, orchestration, arbitration, governance, developmental discipline, dynamic-growth discipline, and sub-agent discipline without allowing constitutional drift
+5. keep the parent strong at routing, orchestration, arbitration, governance, developmental discipline, dynamic-growth discipline, freeze discipline, and sub-agent discipline without allowing constitutional drift
