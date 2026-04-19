@@ -167,6 +167,39 @@ CREATE TABLE IF NOT EXISTS routing_audit (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS ability_ledgers (
+  ability_ledger_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  namespace text NOT NULL,
+  specialist_id text NOT NULL REFERENCES specialists(specialist_id) ON DELETE CASCADE,
+  ability_name text NOT NULL,
+  maturity_stage text NOT NULL,
+  score numeric(5,4) NOT NULL DEFAULT 0.0,
+  evidence text NOT NULL,
+  last_action text,
+  next_action text,
+  updated_by text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (namespace, specialist_id, ability_name)
+);
+
+CREATE TABLE IF NOT EXISTS ability_growth_experiments (
+  experiment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  namespace text NOT NULL,
+  specialist_id text NOT NULL REFERENCES specialists(specialist_id) ON DELETE CASCADE,
+  ability_name text NOT NULL,
+  gap_summary text NOT NULL,
+  evidence_summary text NOT NULL,
+  preferred_surface text NOT NULL,
+  status text NOT NULL,
+  requested_by text NOT NULL,
+  parent_approved_by text,
+  harness_verified_by text,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS initial_classifier text;
 ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS impact impact_level NOT NULL DEFAULT 'medium';
 ALTER TABLE routing_audit ADD COLUMN IF NOT EXISTS was_fallback boolean NOT NULL DEFAULT false;
