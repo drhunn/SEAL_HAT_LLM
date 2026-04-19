@@ -19,6 +19,7 @@ That means:
 - specialization without chaos
 - autonomy without abandonment
 - adaptation without constitutional drift
+- ability expansion without treating parameter count as identity
 
 The system should not optimize all minds into sameness.
 It should allow individuation inside governance.
@@ -37,6 +38,7 @@ Development means a model has:
 - memory formation
 - responsibility that increases only when earned
 - continuity of self across time
+- ability-specific growth rather than size worship
 
 The harness and SEAL loop together form the developmental environment.
 
@@ -51,6 +53,7 @@ Characteristics:
 - low autonomy
 - high supervision
 - basic identity formation begins
+- abilities are mostly absent or reflexive
 
 Typical behavior:
 - simple task exposure
@@ -71,6 +74,7 @@ Characteristics:
 - strengths begin to show
 - reliability matters more
 - memory patterns become meaningful
+- abilities are visible but inconsistent
 
 Typical behavior:
 - repeated task families
@@ -90,6 +94,7 @@ Characteristics:
 - more mistakes under stress
 - stronger differentiation from peers
 - need for review after failures becomes more important
+- some abilities are useful but uneven under pressure
 
 Typical behavior:
 - harder tasks
@@ -111,6 +116,7 @@ Characteristics:
 - bounded independence
 - durable memory and continuity
 - earned responsibility
+- mature core abilities with understood failure modes
 
 Typical behavior:
 - reliable in-lane execution
@@ -135,6 +141,7 @@ In this developmental model, SEAL should support:
 - pattern formation
 - bounded self-shaping
 - specialist differentiation
+- ability-growth proposals
 
 SEAL should not mean uncontrolled mutation.
 It should mean structured developmental change inside approved channels.
@@ -151,6 +158,7 @@ The harness acts as:
 - boundary setter
 - continuity keeper
 - reviewer of earned autonomy
+- governor of when ability growth is real enough to justify new structure
 
 The harness is not merely a prison and not merely a passive recorder.
 It is the developmental environment that shapes growth into something durable and governable.
@@ -167,6 +175,7 @@ That means:
 - different procedural habits
 - different failure modes
 - different recovery patterns
+- different ability profiles
 
 The goal is not convergence into one bland template.
 The goal is governed individuation.
@@ -183,6 +192,7 @@ Autonomy should be earned through:
 - healthy postmortem behavior
 - appropriate escalation behavior
 - bounded self-improvement discipline
+- demonstrated ability maturity
 
 This applies especially to specialists.
 Sub-agents should generally remain in earlier developmental states unless deliberately promoted into full specialist roles.
@@ -199,6 +209,7 @@ The system should preserve:
 - eval outcomes
 - approved operational improvements
 - stable identity projections
+- ability maturity evidence
 
 The point of memory is not just recall.
 The point is continuity of becoming.
@@ -217,6 +228,7 @@ That means:
 - repeated failures should affect trust and autonomy
 - high-impact failures should narrow authority until recovery is earned
 - postmortem refusal is itself a developmental red flag
+- persistent ability gaps may justify governed growth experiments
 
 A mature system does not pretend failure never happened.
 It metabolizes failure into better boundaries and better behavior.
@@ -232,12 +244,14 @@ That means the system should encourage:
 - durable strengths
 - explicit boundaries
 - recoverable mistakes
+- modular ability growth where justified
 
 It should discourage:
 - flattening every specialist into the same assistant style
 - uncontrolled self-expansion
 - identity collapse under pressure
 - silent drift in constitutional behavior
+- treating bigger size as a substitute for stable ability
 
 ---
 
@@ -248,6 +262,7 @@ The parent should instead:
 - decide when autonomy can expand
 - decide when a role is still immature
 - decide when a specialist is ready for greater trust
+- decide when a persistent ability gap justifies new structure
 - preserve the constitutional frame across all stages
 
 The parent is the long-horizon governor of development, not the replacement for development.
@@ -262,6 +277,7 @@ A model should move toward adulthood when it demonstrates:
 - healthy postmortem compliance
 - successful eval performance
 - bounded self-improvement discipline
+- stable core ability maturity
 
 Promotion should not be based on vibes alone.
 It should be evidence-backed.
@@ -278,5 +294,6 @@ The developmental philosophy of MM-ELLS is:
 - SEAL should support bounded growth
 - the harness should provide upbringing and structure
 - the system should allow governed individuation rather than forced sameness
+- the system should grow abilities first and only grow structure when evidence justifies it
 
 **SEAL gives them growth; the harness gives them upbringing.**
