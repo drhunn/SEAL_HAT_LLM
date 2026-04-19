@@ -13,6 +13,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 )
@@ -66,7 +67,14 @@ func main() {
 	}
 
 	routingService := routing.NewService(logger)
-	executionService := execution.NewService(logger)
+	hostRegistry := modelhost.NewRegistry()
+	hostRegistry.Register("Parent-Generalist-30B", modelhost.NewStaticHost("verify-parent-host", "parent verify ok"))
+	hostRegistry.Register("Image-Analysis-Specialist-01", modelhost.NewStaticHost("verify-image-host", "image verify ok"))
+	hostRegistry.Register("Audio-Transcription-Specialist-01", modelhost.NewStaticHost("verify-audio-host", "audio verify ok"))
+	hostRegistry.Register("Video-Understanding-Specialist-01", modelhost.NewStaticHost("verify-video-host", "video verify ok"))
+	hostRegistry.Register("Document-Layout-OCR-Specialist-01", modelhost.NewStaticHost("verify-document-host", "document verify ok"))
+	hostRegistry.Register("Multimodal-Evidence-Fusion-Specialist-01", modelhost.NewStaticHost("verify-fusion-host", "fusion verify ok"))
+	executionService := execution.NewService(logger, hostRegistry)
 	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
 	routingDecision := routingService.DecideTask(ctx, routing.Input{
 		TaskSummary:     "verify multimodal routing",
@@ -79,7 +87,7 @@ func main() {
 	)
 
 	if cfg.Runtime.EnableMultimodalSmokeTest {
-		plan := executionService.Plan(ctx, execution.Request{
+		result, err := executionService.Execute(ctx, execution.Request{
 			TaskSummary:                 "verify multimodal execution",
 			TaskClass:                   "evidence_fusion",
 			PrimaryModality:             modality.Image,
@@ -87,11 +95,17 @@ func main() {
 			CrossModalGroundingRequired: true,
 			AllowTextOnlyFallback:       cfg.Runtime.AllowTextOnlyFallback,
 			AssetRefs:                   []string{"sandbox://verify/image-1"},
+			Prompt:                      "Verify image and text fusion.",
 		})
+		if err != nil {
+			logger.Error("execution verify failed", "err", err)
+			os.Exit(1)
+		}
 		logger.Info("execution verify ok",
-			"executor", plan.ChosenExecutor,
-			"execution_mode", plan.ExecutionMode,
-			"requires_fusion", plan.RequiresFusion,
+			"executor", result.Plan.ChosenExecutor,
+			"execution_mode", result.Plan.ExecutionMode,
+			"host", result.HostResult.HostName,
+			"handled", result.HostResult.Handled,
 		)
 	}
 
