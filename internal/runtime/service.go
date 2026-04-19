@@ -8,6 +8,7 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/growth"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/harness"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
@@ -23,11 +24,12 @@ type Service struct {
 	harness   *harness.Service
 	routing   *routing.Service
 	execution *execution.Service
+	growth    *growth.Service
 	slotSync  *slotsync.Service
 	logger    *slog.Logger
 }
 
-func NewService(cfg *config.AppConfig, loader *slots.FilesystemLoader, store *memory.PostgresStore, harnessService *harness.Service, routingService *routing.Service, executionService *execution.Service, slotSyncService *slotsync.Service, logger *slog.Logger) *Service {
+func NewService(cfg *config.AppConfig, loader *slots.FilesystemLoader, store *memory.PostgresStore, harnessService *harness.Service, routingService *routing.Service, executionService *execution.Service, growthService *growth.Service, slotSyncService *slotsync.Service, logger *slog.Logger) *Service {
 	return &Service{
 		cfg:       cfg,
 		loader:    loader,
@@ -35,6 +37,7 @@ func NewService(cfg *config.AppConfig, loader *slots.FilesystemLoader, store *me
 		harness:   harnessService,
 		routing:   routingService,
 		execution: executionService,
+		growth:    growthService,
 		slotSync:  slotSyncService,
 		logger:    logger,
 	}
@@ -122,6 +125,30 @@ func (s *Service) Start(ctx context.Context) error {
 			if err := s.store.PersistMultimodalExecution(runCtx, persistInput); err != nil {
 				s.logger.Warn("persist multimodal execution failed", "err", err)
 			}
+		}
+	}
+
+	if s.growth != nil {
+		growthResult, err := s.growth.StageExperiment(runCtx, s.cfg.Runtime.Namespace, s.cfg.Runtime.SpecialistID, growth.Assessment{
+			AbilityName:       "multimodal_grounding",
+			GapSummary:        "Persistent need for stronger multimodal grounding beyond current text-first execution scaffolding.",
+			EvidenceSummary:   "Multimodal routing/execution exists, but live modality backends and deeper grounded retrieval are still immature.",
+			TriedMemoryFix:    true,
+			TriedRoutingFix:   true,
+			TriedPromptFix:    true,
+			PreferredSurface:  "modality_branch",
+			RequestedBy:       s.cfg.Harness.DefaultCreatedBy,
+			ParentApprovedBy:  "parent:startup-smoke",
+			HarnessVerifiedBy: s.cfg.Harness.DefaultCreatedBy,
+			Notes:             "startup governed ability-growth smoke path",
+		})
+		if err != nil {
+			s.logger.Warn("ability growth smoke path failed", "err", err)
+		} else {
+			s.logger.Info("ability growth smoke path ok",
+				"status", growthResult.Status,
+				"experiment_id", growthResult.ExperimentID,
+			)
 		}
 	}
 
