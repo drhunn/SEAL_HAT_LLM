@@ -1,5 +1,5 @@
 [app]
-name = "llm-plus-harness"
+name = "SEAL_HAT_LLM"
 environment = "development"
 log_level = "info"
 
@@ -12,6 +12,9 @@ namespace = "memory.csse-tool-development-specialist-01"
 slots_root = "./specialists"
 config_root = "./config"
 request_timeout_seconds = 30
+default_primary_modality = "text"
+allow_text_only_fallback = true
+enable_multimodal_smoke_test = true
 
 [harness]
 auto_create_postmortems = true
