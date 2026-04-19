@@ -59,7 +59,6 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
-	// Startup smoke tests: because "it compiled" is not an availability strategy.
 	if s.routing != nil {
 		decision := s.routing.DecideTask(runCtx, routing.Input{
 			TaskSummary:     "startup routing smoke test",
@@ -87,7 +86,7 @@ func (s *Service) Start(ctx context.Context) error {
 	}
 
 	if s.execution != nil && s.cfg.Runtime.EnableMultimodalSmokeTest {
-		result, err := s.execution.Execute(runCtx, execution.Request{
+		req := execution.Request{
 			TaskSummary:                 "startup multimodal execution smoke test",
 			TaskClass:                   "evidence_fusion",
 			PrimaryModality:             modality.Image,
@@ -96,7 +95,8 @@ func (s *Service) Start(ctx context.Context) error {
 			AllowTextOnlyFallback:       s.cfg.Runtime.AllowTextOnlyFallback,
 			AssetRefs:                   []string{"sandbox://startup-smoke/image-1"},
 			Prompt:                      "Compare image evidence with text context.",
-		})
+		}
+		result, err := s.execution.Execute(runCtx, req)
 		if err != nil {
 			s.logger.Warn("multimodal execution smoke test failed", "err", err)
 		} else {
@@ -106,6 +106,22 @@ func (s *Service) Start(ctx context.Context) error {
 				"host", result.HostResult.HostName,
 				"handled", result.HostResult.Handled,
 			)
+			persistInput := memory.MultimodalExecutionInput{
+				Namespace:       s.cfg.Runtime.Namespace,
+				SpecialistID:    s.cfg.Runtime.SpecialistID,
+				TaskSummary:     req.TaskSummary,
+				PrimaryModality: req.PrimaryModality.String(),
+				ExecutionMode:   result.Plan.ExecutionMode,
+				Executor:        result.Plan.ChosenExecutor,
+				HostName:        result.HostResult.HostName,
+				Output:          result.HostResult.Output,
+				RequiresFusion:  result.Plan.RequiresFusion,
+				AssetURIs:       req.AssetRefs,
+				CreatedBy:       s.cfg.Harness.DefaultCreatedBy,
+			}
+			if err := s.store.PersistMultimodalExecution(runCtx, persistInput); err != nil {
+				s.logger.Warn("persist multimodal execution failed", "err", err)
+			}
 		}
 	}
 
@@ -113,7 +129,6 @@ func (s *Service) Start(ctx context.Context) error {
 	if err != nil {
 		s.logger.Warn("coarse-to-fine retrieval smoke test failed", "err", err)
 	} else {
-		// Retrieval-first, transcript-hoarding last.
 		s.logger.Info("coarse-to-fine retrieval smoke test ok", "result_count", len(results))
 	}
 
