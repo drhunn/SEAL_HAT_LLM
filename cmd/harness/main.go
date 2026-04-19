@@ -12,6 +12,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/evals"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/growth"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/harness"
 	workflow "github.com/drhunn/SEAL_HAT_LLM/internal/harness/workflows"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/lifecycle"
@@ -54,6 +55,7 @@ func main() {
 	pmService := postmortem.NewService(store, logger, cfg.Harness.DefaultCreatedBy)
 	evalService := evals.NewService(store, logger)
 	lifecycleService := lifecycle.NewService(database, logger)
+	growthService := growth.NewService(store, logger)
 	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
 	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
 	routingService := routing.NewService(logger)
@@ -65,7 +67,7 @@ func main() {
 	hostRegistry.Register("Document-Layout-OCR-Specialist-01", modelhost.NewAssetSummaryHost("local-document-host", "document"))
 	hostRegistry.Register("Multimodal-Evidence-Fusion-Specialist-01", modelhost.NewFusionHost("local-fusion-host"))
 	executionService := execution.NewService(logger, hostRegistry)
-	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, slotSyncService, logger)
+	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
 
 	if err := runtimeService.Start(ctx); err != nil {
 		logger.Error("runtime stopped with error", "err", err)
