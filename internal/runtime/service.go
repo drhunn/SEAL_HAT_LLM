@@ -64,7 +64,7 @@ func (s *Service) Start(ctx context.Context) error {
 		decision := s.routing.DecideTask(runCtx, routing.Input{
 			TaskSummary:     "startup routing smoke test",
 			TaskClass:       "governance",
-			PrimaryModality: modality.Text,
+			PrimaryModality: modality.Normalize(s.cfg.Runtime.DefaultPrimaryModality),
 		})
 		if _, err := s.store.CreateRoutingAudit(runCtx, memory.RoutingAuditInput{
 			TaskID:                "startup-smoke",
@@ -86,21 +86,27 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
-	if s.execution != nil {
-		plan := s.execution.Plan(runCtx, execution.Request{
+	if s.execution != nil && s.cfg.Runtime.EnableMultimodalSmokeTest {
+		result, err := s.execution.Execute(runCtx, execution.Request{
 			TaskSummary:                 "startup multimodal execution smoke test",
 			TaskClass:                   "evidence_fusion",
 			PrimaryModality:             modality.Image,
 			SecondaryModalities:         []modality.Type{modality.Text},
 			CrossModalGroundingRequired: true,
-			AllowTextOnlyFallback:       true,
+			AllowTextOnlyFallback:       s.cfg.Runtime.AllowTextOnlyFallback,
 			AssetRefs:                   []string{"sandbox://startup-smoke/image-1"},
+			Prompt:                      "Compare image evidence with text context.",
 		})
-		s.logger.Info("multimodal execution smoke test ok",
-			"executor", plan.ChosenExecutor,
-			"execution_mode", plan.ExecutionMode,
-			"requires_fusion", plan.RequiresFusion,
-		)
+		if err != nil {
+			s.logger.Warn("multimodal execution smoke test failed", "err", err)
+		} else {
+			s.logger.Info("multimodal execution smoke test ok",
+				"executor", result.Plan.ChosenExecutor,
+				"execution_mode", result.Plan.ExecutionMode,
+				"host", result.HostResult.HostName,
+				"handled", result.HostResult.Handled,
+			)
+		}
 	}
 
 	results, err := s.store.RunCoarseToFineSearch(runCtx, s.cfg.Runtime.Namespace, s.cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5)
