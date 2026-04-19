@@ -55,6 +55,29 @@ func main() {
 	}
 	logger.Info("slot load ok", "specialist_id", cfg.Runtime.SpecialistID, "count", len(slotFiles))
 
+	compiler := slots.NewCompiler()
+	bundle, err := compiler.CompileSpecialist(cfg.Runtime.SpecialistID, slotFiles)
+	if err != nil {
+		logger.Error("slot bundle compile failed", "specialist_id", cfg.Runtime.SpecialistID, "err", err)
+		os.Exit(1)
+	}
+	bundleBytes, err := bundle.EncodeTOML()
+	if err != nil {
+		logger.Error("slot bundle TOML encode failed", "specialist_id", cfg.Runtime.SpecialistID, "err", err)
+		os.Exit(1)
+	}
+	summary := bundle.Summary()
+	logger.Info("slot bundle compile ok",
+		"specialist_id", cfg.Runtime.SpecialistID,
+		"schema", bundle.Schema,
+		"core_skill_count", summary.CoreSkillCount,
+		"playbook_count", summary.PlaybookCount,
+		"allowed_tool_count", summary.AllowedToolCount,
+		"memory_pointer_count", summary.MemoryPointerCount,
+		"source_map_count", summary.SourceMapCount,
+		"encoded_bytes", len(bundleBytes),
+	)
+
 	if _, err := store.HealthSnapshot(ctx, cfg.Runtime.SpecialistID); err != nil {
 		logger.Warn("health snapshot unavailable", "err", err)
 	} else {
