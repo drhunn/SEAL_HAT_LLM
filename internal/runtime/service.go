@@ -13,6 +13,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/slotpacket"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slotsync"
 )
@@ -60,6 +61,17 @@ func (s *Service) Start(ctx context.Context) error {
 		if err := s.slotSync.SyncFilesystemView(runCtx, s.cfg.Runtime.SpecialistID); err != nil {
 			s.logger.Warn("slot sync failed", "specialist_id", s.cfg.Runtime.SpecialistID, "err", err)
 		}
+	}
+
+	packet := slotpacket.BuildFromUnknown(s.cfg.Runtime.SpecialistID, "active", true, slotFiles)
+	if err := slotpacket.WriteJSON("artifacts/slot_packet.json", packet); err != nil {
+		s.logger.Warn("slot packet export failed", "specialist_id", s.cfg.Runtime.SpecialistID, "err", err)
+	} else {
+		s.logger.Info("slot packet exported",
+			"specialist_id", s.cfg.Runtime.SpecialistID,
+			"path", "artifacts/slot_packet.json",
+			"version_hash", packet.VersionHash,
+		)
 	}
 
 	if s.routing != nil {
