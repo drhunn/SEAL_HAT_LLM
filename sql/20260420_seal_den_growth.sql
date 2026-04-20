@@ -1,117 +1,119 @@
+SET search_path TO agent_core, public;
+
 -- SEAL and DEN growth schema scaffold
 -- Adds the first durable tables for telemetry signals, adaptation proposals,
 -- growth plans, lineage state, slot bundle versions, and promotion decisions.
 
-create table if not exists adaptation_signals (
-  id uuid primary key,
-  specialist_id text not null,
-  category text not null,
-  severity text not null,
-  surface text not null,
+CREATE TABLE IF NOT EXISTS agent_core.adaptation_signals (
+  id text PRIMARY KEY,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  category text NOT NULL,
+  severity text NOT NULL,
+  surface text NOT NULL,
   task_class text,
-  summary text not null,
-  evidence_refs jsonb not null default '[]'::jsonb,
-  occurred_at timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  summary text NOT NULL,
+  evidence_refs jsonb NOT NULL DEFAULT '[]'::jsonb,
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create index if not exists adaptation_signals_specialist_idx
-  on adaptation_signals (specialist_id, occurred_at desc);
+CREATE INDEX IF NOT EXISTS adaptation_signals_specialist_idx
+  ON agent_core.adaptation_signals (specialist_id, occurred_at DESC);
 
-create table if not exists gap_clusters (
-  id uuid primary key,
-  specialist_id text not null,
-  category text not null,
-  surface text not null,
-  count integer not null,
-  persistence_score double precision not null,
-  severity_score double precision not null,
-  reversibility_score double precision not null,
-  summaries jsonb not null default '[]'::jsonb,
-  evidence_refs jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.gap_clusters (
+  id text PRIMARY KEY,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  category text NOT NULL,
+  surface text NOT NULL,
+  count integer NOT NULL,
+  persistence_score double precision NOT NULL,
+  severity_score double precision NOT NULL,
+  reversibility_score double precision NOT NULL,
+  summaries jsonb NOT NULL DEFAULT '[]'::jsonb,
+  evidence_refs jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table if not exists adaptation_proposals (
-  id uuid primary key,
-  specialist_id text not null,
-  cluster_id uuid,
-  surface text not null,
-  reason text not null,
-  requested_by text not null,
-  risk_level text not null,
-  requires_harness boolean not null default true,
-  requires_parent boolean not null default false,
-  rollback_required boolean not null default true,
-  status text not null default 'proposed',
-  created_at timestamptz not null default now(),
+CREATE TABLE IF NOT EXISTS agent_core.adaptation_proposals (
+  id text PRIMARY KEY,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  cluster_id text REFERENCES agent_core.gap_clusters(id) ON DELETE SET NULL,
+  surface text NOT NULL,
+  reason text NOT NULL,
+  requested_by text NOT NULL,
+  risk_level text NOT NULL,
+  requires_harness boolean NOT NULL DEFAULT true,
+  requires_parent boolean NOT NULL DEFAULT false,
+  rollback_required boolean NOT NULL DEFAULT true,
+  status text NOT NULL DEFAULT 'proposed',
+  created_at timestamptz NOT NULL DEFAULT now(),
   approved_at timestamptz
 );
 
-create index if not exists adaptation_proposals_specialist_idx
-  on adaptation_proposals (specialist_id, status, created_at desc);
+CREATE INDEX IF NOT EXISTS adaptation_proposals_specialist_idx
+  ON agent_core.adaptation_proposals (specialist_id, status, created_at DESC);
 
-create table if not exists growth_plans (
-  id uuid primary key,
-  proposal_id uuid not null,
-  specialist_id text not null,
-  surface text not null,
-  reason text not null,
-  experiment_name text not null,
-  freeze_plan jsonb not null,
-  rollback_plan jsonb not null,
-  status text not null default 'planned',
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.growth_plans (
+  id text PRIMARY KEY,
+  proposal_id text NOT NULL REFERENCES agent_core.adaptation_proposals(id) ON DELETE CASCADE,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  surface text NOT NULL,
+  reason text NOT NULL,
+  experiment_name text NOT NULL,
+  freeze_plan jsonb NOT NULL,
+  rollback_plan jsonb NOT NULL,
+  status text NOT NULL DEFAULT 'planned',
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table if not exists growth_experiments (
-  id uuid primary key,
-  growth_plan_id uuid not null,
-  specialist_id text not null,
-  surface text not null,
-  status text not null default 'staged',
-  artifact_refs jsonb not null default '[]'::jsonb,
-  metrics jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
+CREATE TABLE IF NOT EXISTS agent_core.growth_experiments (
+  id text PRIMARY KEY,
+  growth_plan_id text NOT NULL REFERENCES agent_core.growth_plans(id) ON DELETE CASCADE,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  surface text NOT NULL,
+  status text NOT NULL DEFAULT 'staged',
+  artifact_refs jsonb NOT NULL DEFAULT '[]'::jsonb,
+  metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
   completed_at timestamptz
 );
 
-create table if not exists lineage_nodes (
-  id uuid primary key,
-  node_type text not null,
-  external_id text not null unique,
-  status text not null default 'active',
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.lineage_nodes (
+  id text PRIMARY KEY,
+  node_type text NOT NULL,
+  external_id text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'active',
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table if not exists lineage_edges (
-  id uuid primary key,
-  from_node_id uuid not null,
-  to_node_id uuid not null,
-  edge_type text not null,
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.lineage_edges (
+  id text PRIMARY KEY,
+  from_node_id text NOT NULL REFERENCES agent_core.lineage_nodes(id) ON DELETE CASCADE,
+  to_node_id text NOT NULL REFERENCES agent_core.lineage_nodes(id) ON DELETE CASCADE,
+  edge_type text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table if not exists slot_bundle_versions (
-  id uuid primary key,
-  specialist_id text not null,
-  bundle_toml text not null,
-  source_map jsonb not null,
-  version_label text not null,
-  created_by text not null,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.slot_bundle_versions (
+  id text PRIMARY KEY,
+  specialist_id text NOT NULL REFERENCES agent_core.specialists(specialist_id) ON DELETE CASCADE,
+  bundle_toml text NOT NULL,
+  source_map jsonb NOT NULL,
+  version_label text NOT NULL,
+  created_by text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-create index if not exists slot_bundle_versions_specialist_idx
-  on slot_bundle_versions (specialist_id, created_at desc);
+CREATE INDEX IF NOT EXISTS slot_bundle_versions_specialist_idx
+  ON agent_core.slot_bundle_versions (specialist_id, created_at DESC);
 
-create table if not exists promotion_decisions (
-  id uuid primary key,
-  experiment_id uuid not null,
-  decision text not null,
-  reason text not null,
-  approved_by text not null,
-  created_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS agent_core.promotion_decisions (
+  id text PRIMARY KEY,
+  experiment_id text NOT NULL REFERENCES agent_core.growth_experiments(id) ON DELETE CASCADE,
+  decision text NOT NULL,
+  reason text NOT NULL,
+  approved_by text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
