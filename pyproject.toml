@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hat-llm"
 version = "0.1.0"
-description = "Harness-aware training scaffold for governed specialist LLM systems"
+description = "Harness-native training scaffold for governed specialist LLM systems"
 readme = "docs/hat-llm.md"
 requires-python = ">=3.11"
 authors = [{ name = "Danny Hunn" }]
@@ -17,22 +17,26 @@ hf = ["datasets>=2.21"]
 training = [
   "datasets>=2.21",
   "transformers>=4.44",
-  "peft>=0.12",
-  "accelerate>=0.34",
-  "torch>=2.3",
+  "jax>=0.4",
+  "jaxlib>=0.4",
+  "flax>=0.8",
+  "optax>=0.2",
+  "orbax-checkpoint>=0.6",
 ]
 full = [
   "psycopg[binary]>=3.2",
   "datasets>=2.21",
   "transformers>=4.44",
-  "peft>=0.12",
-  "accelerate>=0.34",
-  "torch>=2.3",
+  "jax>=0.4",
+  "jaxlib>=0.4",
+  "flax>=0.8",
+  "optax>=0.2",
+  "orbax-checkpoint>=0.6",
 ]
 
 [project.scripts]
 hat-llm = "hat_llm.build_dataset:main"
-hat-llm-train = "hat_llm.lora_train:main"
+hat-llm-train = "hat_llm.jax_train:main"
 
 [tool.setuptools]
 package-dir = {"" = "python"}
