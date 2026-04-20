@@ -47,6 +47,8 @@ jobs:
       - name: Go build
         run: go build ./...
       - name: Go test
+        env:
+          TEST_DATABASE_DSN: postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable
         run: go test ./...
       - name: Strict verify
         run: go run ./cmd/verify -config config/runtime.example.toml -mode strict
