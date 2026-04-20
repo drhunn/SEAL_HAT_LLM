@@ -89,17 +89,6 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		}
 	}
 
-	if reqPrimaryUnknownAndFallbackAllowed(in, primary) {
-		decision.ChosenTarget = "Parent-Generalist-30B"
-		decision.UsesTextOnlyFallback = true
-		decision.Notes = "unknown modality fell back to text-first execution"
-	}
-
-	if in.CrossModalGroundingRequired && len(in.AssetRefs()) == 0 {
-		decision.NeedsParentView = true
-		decision.FallbackReason = "cross-modal request without asset refs should be reviewed by parent"
-	}
-
 	s.logger.InfoContext(ctx, "routing decision",
 		"task_class", decision.TaskClass,
 		"primary_modality", decision.PrimaryModality,
@@ -128,14 +117,6 @@ func SignalsForDecision(specialistID string, in Input, decision Decision, collec
 		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "fusion-required task was not routed to fusion executor", telemetry.SeverityHigh, decision.ChosenTarget))
 	}
 	return signals
-}
-
-func reqPrimaryUnknownAndFallbackAllowed(in Input, primary modality.Type) bool {
-	return in.PrimaryModality == modality.Unknown && primary == modality.Text
-}
-
-func (Input) AssetRefs() []string {
-	return nil
 }
 
 func firstNonEmpty(values ...string) string {
