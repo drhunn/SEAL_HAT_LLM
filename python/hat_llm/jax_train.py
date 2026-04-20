@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,6 +9,7 @@ from pathlib import Path
 import jax
 import jax.numpy as jnp
 import optax
+from flax import serialization
 from flax.training import train_state
 
 from .repo_loader import RepositoryLoader
@@ -141,6 +143,30 @@ def _loss_from_logits(logits, labels, attention_mask):
     return jnp.sum(masked) / denom
 
 
+def _save_hybrid_artifacts(cfg: TrainConfig, params, tokenizer) -> None:
+    out_dir = Path(cfg.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "hybrid_model.msgpack").write_bytes(serialization.to_bytes(params))
+    (out_dir / "hybrid_model_config.json").write_text(
+        json.dumps(
+            {
+                "vocab_size": tokenizer.vocab_size,
+                "d_model": cfg.d_model,
+                "d_slot": cfg.d_slot,
+                "num_layers": cfg.num_layers,
+                "max_length": cfg.max_length,
+                "slot_max_length": cfg.slot_max_length,
+                "slot_max_count": cfg.slot_max_count,
+                "specialist_id": cfg.specialist_id,
+                "runtime_mode": cfg.runtime_mode,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    tokenizer.save_pretrained(str(out_dir))
+
+
 def run_training(cfg: TrainConfig) -> None:
     from transformers import FlaxAutoModelForCausalLM
 
@@ -176,7 +202,7 @@ def run_training(cfg: TrainConfig) -> None:
                 slot_enabled_mask=slot_inputs["slot_enabled_mask"],
             )
 
-        save_fn = lambda params: None
+        save_fn = lambda params: _save_hybrid_artifacts(cfg, params, tokenizer)
     else:
         model = FlaxAutoModelForCausalLM.from_pretrained(cfg.model_name_or_path, dtype=jnp.float32)
         params = model.params
@@ -213,12 +239,13 @@ def run_training(cfg: TrainConfig) -> None:
             global_step += 1
             if global_step % cfg.logging_steps == 0:
                 print(f"step={global_step} loss={float(loss):.4f}")
-            if global_step % cfg.save_steps == 0 and not cfg.hybrid_slot_model:
+            if global_step % cfg.save_steps == 0:
                 save_fn(state.params)
-                tokenizer.save_pretrained(cfg.output_dir)
+                if not cfg.hybrid_slot_model:
+                    tokenizer.save_pretrained(cfg.output_dir)
 
+    save_fn(state.params)
     if not cfg.hybrid_slot_model:
-        save_fn(state.params)
         tokenizer.save_pretrained(cfg.output_dir)
 
 
