@@ -142,8 +142,8 @@ The system should not use DEN as an excuse to add capacity casually.
 ---
 
 ## repository package layout
-The existing repository already contains runtime, routing, memory, growth, slots, and verification scaffolding.
-The architecture should grow by adding a few narrowly scoped packages.
+The existing repository already contains runtime, routing, memory, growth, slots, verification, and now early SEAL/DEN/telemetry scaffolding.
+The architecture should continue to grow through a few narrowly scoped packages.
 
 Recommended layout:
 
@@ -180,52 +180,50 @@ internal/
 #### `internal/telemetry`
 Responsible for normalized runtime signals.
 
-Suggested files:
-- `types.go`
-- `events.go`
-- `collector.go`
+Current state:
+- collector exists
+- in-memory signal store exists
+- retrieval/routing/execution signal helpers exist
+- `cmd/verify` exercises these paths now
 
 #### `internal/seal`
 Responsible for adaptation governance.
 
-Suggested files:
-- `types.go`
-- `service.go`
-- `signals.go`
-- `clustering.go`
-- `scoring.go`
-- `policy.go`
-- `proposals.go`
+Current state:
+- basic proposal surfaces exist
+- signal clustering and proposal generation scaffold exists
+- `cmd/verify` now exercises proposal generation
 
 #### `internal/den`
 Responsible for structural growth planning.
 
-Suggested files:
-- `types.go`
-- `service.go`
-- `capacity.go`
-- `planner.go`
-- `freeze.go`
-- `experiments.go`
+Current state:
+- growth-plan surface mapping exists
+- freeze-plan and rollback-plan scaffolding exists
+- `cmd/verify` now exercises growth-plan generation from a SEAL proposal
 
 #### `internal/oversight`
 Responsible for promotion, rollback, and policy enforcement.
 
-Suggested files:
-- `types.go`
-- `service.go`
-- `approvals.go`
-- `promotion.go`
-- `rollback.go`
-- `policy_checks.go`
+Current state:
+- scaffold exists
+- approval/promotion/rollback are not yet fully wired into the durable runtime path
 
 #### `internal/lineage`
 Responsible for model and specialist ancestry tracking.
 
-Suggested files:
-- `types.go`
-- `service.go`
-- `graph.go`
+Current state:
+- scaffold exists
+- durable lineage writes still need deeper integration with growth execution
+
+#### `internal/growth`
+Responsible for governed experiment execution.
+
+Current state:
+- the preferred split is now explicit:
+  - `seal` decides whether to adapt
+  - `den` decides where to expand
+  - `growth` executes bounded experiments
 
 ---
 
@@ -301,93 +299,25 @@ type Service interface {
 ## database additions
 The following tables should be added by new migrations rather than by rewriting the original schema in place.
 
+The current migration now uses the `agent_core` schema and text-style IDs to stay aligned with the current Go implementation.
+
 ### `adaptation_signals`
 Stores normalized runtime evidence.
-
-Fields should include:
-- `id`
-- `specialist_id`
-- `category`
-- `severity`
-- `surface`
-- `task_class`
-- `summary`
-- `evidence_refs`
-- `occurred_at`
-- `created_at`
 
 ### `gap_clusters`
 Stores SEAL’s grouped interpretation of repeated failures.
 
-Fields should include:
-- `id`
-- `specialist_id`
-- `category`
-- `surface`
-- `count`
-- `persistence_score`
-- `severity_score`
-- `reversibility_score`
-- `summaries`
-- `evidence_refs`
-- `created_at`
-
 ### `adaptation_proposals`
 Stores SEAL output.
-
-Fields should include:
-- `id`
-- `specialist_id`
-- `cluster_id`
-- `surface`
-- `reason`
-- `requested_by`
-- `risk_level`
-- `requires_harness`
-- `requires_parent`
-- `rollback_required`
-- `status`
-- `created_at`
-- `approved_at`
 
 ### `growth_plans`
 Stores DEN output.
 
-Fields should include:
-- `id`
-- `proposal_id`
-- `specialist_id`
-- `surface`
-- `reason`
-- `experiment_name`
-- `freeze_plan`
-- `rollback_plan`
-- `status`
-- `created_at`
-
 ### `growth_experiments`
 Stores actual experiment lifecycle state.
 
-Fields should include:
-- `id`
-- `growth_plan_id`
-- `specialist_id`
-- `surface`
-- `status`
-- `artifact_refs`
-- `metrics`
-- `created_at`
-- `completed_at`
-
 ### `lineage_nodes`
 Stores any durable node in the system lineage.
-
-Node types should eventually include:
-- parent model
-- specialist
-- adapter
-- branch
-- expert bank
 
 ### `lineage_edges`
 Stores relationships such as:
@@ -400,25 +330,8 @@ Stores relationships such as:
 ### `slot_bundle_versions`
 Stores compiled specialist slot bundles and source maps.
 
-Fields should include:
-- `id`
-- `specialist_id`
-- `bundle_toml`
-- `source_map`
-- `version_label`
-- `created_by`
-- `created_at`
-
 ### `promotion_decisions`
 Stores harness or parent outcomes.
-
-Fields should include:
-- `id`
-- `experiment_id`
-- `decision`
-- `reason`
-- `approved_by`
-- `created_at`
 
 ---
 
@@ -432,12 +345,21 @@ Execution should emit telemetry such as:
 - cross-modal grounding failure
 - repeated execution degradation
 
+Current state:
+- execution telemetry helper exists
+- verify path exercises it
+- broader runtime integration still needs to expand beyond verify
+
 ### routing
 Routing should emit telemetry such as:
 - wrong specialist chosen
 - no viable route
 - repeated reroute
 - text-only fallback overuse
+
+Current state:
+- routing telemetry helper exists
+- verify path exercises it
 
 ### memory
 Memory should emit telemetry such as:
@@ -446,15 +368,13 @@ Memory should emit telemetry such as:
 - pointer miss
 - context overflow triggered
 
-### growth
-The existing `growth` package should either:
-- remain the experiment execution layer, or
-- be narrowed over time while `seal` and `den` own decision-making
+Current state:
+- retrieval telemetry helper exists
+- verify path exercises it
+- durable writes now exist when the migration has been applied
 
-The preferred split is:
-- `seal` decides whether to adapt
-- `den` decides where to expand
-- `growth` executes bounded experiments
+### growth
+The existing `growth` package should remain the experiment execution layer while `seal` and `den` own decision-making.
 
 ---
 
@@ -519,12 +439,17 @@ This keeps growth local and governed instead of allowing whole-system drift.
 ### milestone 1
 **single-specialist adaptive loop works end to end**
 
-Deliverables:
-- adaptation signals table
-- SEAL proposal generation
-- harness approval for operational proposals
-- compiled slot bundle persistence/versioning
-- `verify` checks for signal -> proposal -> bundle-version flow
+Current status:
+- mostly scaffolded and partially exercised in `cmd/verify`
+- telemetry helpers exist
+- SEAL proposal generation exists
+- DEN plan generation exists
+- bundle persistence and SEAL/DEN persistence are attempted by `cmd/verify` when the migration has been applied
+
+Still needed:
+- durable oversight approval path
+- richer lineage updates during growth execution
+- tighter runtime integration beyond verify-only exercise
 
 ### milestone 2
 **non-neural governed DEN growth exists**
@@ -551,15 +476,14 @@ Deliverables:
 ---
 
 ## immediate next step
-The next recommended implementation step is still **milestone 1 only**.
+The immediate next step is no longer to add the first scaffolds.
+Those now exist.
 
-That means:
-- add telemetry tables and writes
-- add SEAL proposal generation
-- persist compiled slot bundles
-- extend `cmd/verify` to exercise the new loop
-
-This gives the repository a real adaptive architecture before it commits to larger structural expansion.
+The next step is to stabilize and execute the current loop against a migrated database:
+- apply the SEAL/DEN migration
+- run `cmd/verify`
+- confirm durable bundle, signal, proposal, and growth-plan persistence
+- wire oversight and lineage more deeply into the live runtime path
 
 ---
 
