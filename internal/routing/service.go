@@ -3,8 +3,10 @@ package routing
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
 
 type Input struct {
@@ -87,6 +89,17 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		}
 	}
 
+	if reqPrimaryUnknownAndFallbackAllowed(in, primary) {
+		decision.ChosenTarget = "Parent-Generalist-30B"
+		decision.UsesTextOnlyFallback = true
+		decision.Notes = "unknown modality fell back to text-first execution"
+	}
+
+	if in.CrossModalGroundingRequired && len(in.AssetRefs()) == 0 {
+		decision.NeedsParentView = true
+		decision.FallbackReason = "cross-modal request without asset refs should be reviewed by parent"
+	}
+
 	s.logger.InfoContext(ctx, "routing decision",
 		"task_class", decision.TaskClass,
 		"primary_modality", decision.PrimaryModality,
@@ -95,4 +108,41 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		"requires_fusion", decision.RequiresFusion,
 	)
 	return decision
+}
+
+func SignalsForDecision(specialistID string, in Input, decision Decision, collector *telemetry.Collector) []telemetry.Signal {
+	if collector == nil {
+		return nil
+	}
+	signals := make([]telemetry.Signal, 0)
+	if decision.WasFallback {
+		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, firstNonEmpty(decision.FallbackReason, "routing fallback used"), telemetry.SeverityModerate, decision.ChosenTarget))
+	}
+	if decision.NeedsParentView {
+		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "routing requested parent review", telemetry.SeverityHigh, decision.ChosenTarget))
+	}
+	if decision.Confidence < 0.55 {
+		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "low-confidence routing decision", telemetry.SeverityLow, decision.ChosenTarget))
+	}
+	if decision.RequiresFusion && !strings.Contains(decision.ChosenTarget, "Fusion") {
+		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "fusion-required task was not routed to fusion executor", telemetry.SeverityHigh, decision.ChosenTarget))
+	}
+	return signals
+}
+
+func reqPrimaryUnknownAndFallbackAllowed(in Input, primary modality.Type) bool {
+	return in.PrimaryModality == modality.Unknown && primary == modality.Text
+}
+
+func (Input) AssetRefs() []string {
+	return nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
