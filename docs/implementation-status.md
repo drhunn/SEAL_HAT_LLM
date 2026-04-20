@@ -21,6 +21,8 @@ This document separates the target architecture from the currently implemented s
 - slot file loading
 - canonical specialist slot bundle compilation and TOML emission
 - runtime startup path
+- bounded runtime task processing path now exists through `runtime.Service.ProcessTask`
+- harness incident handling is now wired into the bounded task path for execution errors, parent-review requirements, and high-severity runtime signals
 - harness service scaffold
 - postmortem creation path
 - eval staging path
@@ -34,7 +36,7 @@ This document separates the target architecture from the currently implemented s
 - SEAL proposal generation scaffold now exists
 - DEN growth planning scaffold now exists
 - oversight and lineage scaffolds now exist
-- basic Go unit tests for retrieval helpers, routing, execution planning, recovery planner logic, slot compiler behavior, SEAL proposal generation, and DEN plan generation
+- basic Go unit tests for retrieval helpers, routing, execution planning, recovery planner logic, slot compiler behavior, runtime task helpers, SEAL proposal generation, and DEN plan generation
 
 ### SQL scaffold
 - base schema for specialists, slots, memory records, embeddings, postmortems, eval cases, self-edit candidates, and routing audit
@@ -66,7 +68,7 @@ This document separates the target architecture from the currently implemented s
 ## partially implemented / scaffolded
 
 ### runtime orchestration
-- parent/specialist orchestration is scaffolded conceptually but not yet a full live production loop
+- parent/specialist orchestration now has a bounded single-task execution path, but not yet a full live production loop or external task queue
 - sub-agent orchestration remains mostly architectural and policy-level rather than deeply implemented
 - tool broker integration is still conceptual
 - slot DB/filesystem synchronization is now stronger because the canonical bundle compiler exists, but DB-backed bundle reconciliation is still not a full live sync workflow
@@ -79,13 +81,13 @@ This document separates the target architecture from the currently implemented s
 - retrieval wrapper exists, but SQL/runtime contracts still need active verification as both evolve
 - candidate staging paths exist in Go, and the DB layer is closer to matching them, but this remains an area to watch
 - context-overflow summarization to Postgres is now architectural policy, but not yet fully implemented as a live orchestration workflow
-- multimodal execution persistence helpers now exist, but the runtime still needs deeper integration beyond smoke-path usage
+- multimodal execution persistence helpers now exist, and the bounded runtime task path now persists execution artifacts, but the runtime still needs deeper integration beyond the current single-task path
 - `cmd/verify` now attempts durable bundle, signal, proposal, and growth-plan persistence, but still falls back safely when the new migration has not been applied yet
 
 ### training and growth
 - dataset generation is useful now
 - training support is more real than before, but still scaffold-level and framework-dependent rather than benchmarked production training
-- DEN-style ability-first growth is no longer only documented: the repo now has telemetry, proposal, and planning scaffolds, but governed dynamic growth is still not a full production runtime
+- DEN-style ability-first growth is no longer only documented: the repo now has telemetry, proposal, and planning scaffolds, and the runtime can stage a bounded task-follow-up growth record, but governed dynamic growth is still not a full production runtime
 - the existing `growth` package should now be understood as the governed experiment-execution layer under SEAL and DEN decisions rather than a competing governor
 
 ### multimodal direction
@@ -134,9 +136,10 @@ That means:
 11. telemetry writes, SEAL proposal writes, and DEN plan writes work durably
 12. context-overflow policy starts being implemented concretely
 13. the first ability-growth path is executed in a governed way rather than only described in docs
+14. the bounded runtime task path graduates into a real external task intake loop
 
 ---
 
 ## summary
 This repository is no longer just an idea, but it is not yet a production runtime.
-It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, early telemetry-driven SEAL/DEN experimentation, earlier multimodal-aware planning, and a DEN-style ability-first growth direction.
+It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
