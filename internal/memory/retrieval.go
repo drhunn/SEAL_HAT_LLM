@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
 
 type RetrievalResult struct {
@@ -86,4 +88,23 @@ func (s *PostgresStore) RunCoarseToFineSearch(ctx context.Context, namespace, sp
 	}
 
 	return results, nil
+}
+
+func SignalsForRetrieval(specialistID, taskClass string, results []RetrievalResult, retrievalErr error, collector *telemetry.Collector) []telemetry.Signal {
+	if collector == nil {
+		return nil
+	}
+	signals := make([]telemetry.Signal, 0)
+	if retrievalErr != nil {
+		signals = append(signals, collector.NewSignal(specialistID, "retrieval", "retrieval", taskClass, retrievalErr.Error(), telemetry.SeverityHigh))
+		return signals
+	}
+	if len(results) == 0 {
+		signals = append(signals, collector.NewSignal(specialistID, "retrieval", "retrieval", taskClass, "retrieval returned no records", telemetry.SeverityModerate))
+		return signals
+	}
+	if results[0].FinalScore < 0.30 {
+		signals = append(signals, collector.NewSignal(specialistID, "retrieval", "retrieval", taskClass, "retrieval top score is weak", telemetry.SeverityLow, results[0].RecordID))
+	}
+	return signals
 }
