@@ -119,12 +119,13 @@ That is useful, but it increases the risk of ambiguity about which format is can
 
 ## 11. CI false confidence
 Basic CI is helpful, but passing import/build checks does not mean the runtime is truly integrated.
-This is especially true now that `cmd/verify` can safely warn and continue when the SEAL/DEN migration is absent.
+This is especially true when soft verify behavior is mistaken for a hard gate.
 
 ### mitigation
 - treat CI as a floor, not a proof of completeness
-- add DB-backed smoke coverage later
-- distinguish soft-fallback verify behavior from fully migrated runtime behavior
+- keep DB-backed smoke coverage in CI through `cmd/verify -mode strict`
+- reserve `cmd/verify -mode soft` for staged local bring-up and reconciliation work
+- distinguish soft-fallback verify behavior from a fully migrated runtime
 
 ---
 
@@ -146,3 +147,4 @@ If the repo breaks, the most likely causes are:
 - naming drift
 - docs outrunning implementation
 - preserved-code ambiguity
+- soft verify being mistaken for a real gate
