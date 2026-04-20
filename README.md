@@ -108,6 +108,7 @@ The docs are ahead of the implementation in a few places. Start with:
 - `docs/implementation-status.md`
 - `docs/likely-breakpoints.md`
 - `docs/schema-runtime-reconciliation.md`
+- `docs/sql-contracts.md`
 - `docs/model-lineage-strategy.md`
 - `docs/ability-first-growth-strategy.md`
 - `docs/dynamic-architecture-strategy.md`
