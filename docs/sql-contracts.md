@@ -285,8 +285,12 @@ Runtime currently expects:
 - run DEN planning from the first proposal
 - attempt to persist the resulting growth plan
 
-The current verify path can warn and continue if the SEAL/DEN migration has not been applied yet.
-That is useful for staged bring-up, but it should not be confused with a fully migrated runtime.
+`cmd/verify` now has two modes:
+- `-mode soft` for staged local bring-up, where optional persistence-path failures warn and continue
+- `-mode strict` for admission gates, where those same failures are fatal
+
+CI and other gatekeeping paths should use strict mode.
+Soft mode is for local reconciliation work and should not be treated as proof that the runtime is fully migrated.
 
 ---
 
@@ -294,5 +298,6 @@ That is useful for staged bring-up, but it should not be confused with a fully m
 Whenever either of these changes:
 - SQL function/table shape
 - Go runtime DB call expectations
+- verify mode semantics for optional DB-backed paths
 
 this file should be updated in the same change set.
