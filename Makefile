@@ -1,6 +1,6 @@
 APP_NAME := harness
 
-.PHONY: build run verify check fmt tidy test pycheck pytest
+.PHONY: build run verify verify-soft verify-strict check fmt tidy test pycheck pytest
 
 build:
 	go build ./...
@@ -8,8 +8,13 @@ build:
 run:
 	go run ./cmd/harness -config config/runtime.example.toml
 
-verify:
-	go run ./cmd/verify -config config/runtime.example.toml
+verify: verify-soft
+
+verify-soft:
+	go run ./cmd/verify -config config/runtime.example.toml -mode soft
+
+verify-strict:
+	go run ./cmd/verify -config config/runtime.example.toml -mode strict
 
 check:
 	go test ./...
