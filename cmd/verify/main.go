@@ -188,13 +188,7 @@ func main() {
 	}
 
 	routingService := routing.NewService(logger)
-	hostRegistry := modelhost.NewRegistry()
-	hostRegistry.Register("Parent-Generalist-30B", modelhost.NewPromptHost("verify-parent-host"))
-	hostRegistry.Register("Image-Analysis-Specialist-01", modelhost.NewAssetSummaryHost("verify-image-host", "image"))
-	hostRegistry.Register("Audio-Transcription-Specialist-01", modelhost.NewAssetSummaryHost("verify-audio-host", "audio"))
-	hostRegistry.Register("Video-Understanding-Specialist-01", modelhost.NewAssetSummaryHost("verify-video-host", "video"))
-	hostRegistry.Register("Document-Layout-OCR-Specialist-01", modelhost.NewAssetSummaryHost("verify-document-host", "document"))
-	hostRegistry.Register("Multimodal-Evidence-Fusion-Specialist-01", modelhost.NewFusionHost("verify-fusion-host"))
+	hostRegistry := modelhost.NewSimulatedRegistry("verify")
 	executionService := execution.NewService(logger, hostRegistry)
 	growthService := growth.NewService(store, logger)
 	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
