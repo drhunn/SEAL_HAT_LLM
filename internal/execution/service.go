@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
 
 type Request struct {
@@ -129,4 +131,28 @@ func (s *Service) Execute(ctx context.Context, req Request) (Result, error) {
 	)
 
 	return Result{Plan: plan, HostResult: hostResult}, nil
+}
+
+func SignalsForExecution(specialistID string, req Request, result Result, execErr error, collector *telemetry.Collector) []telemetry.Signal {
+	if collector == nil {
+		return nil
+	}
+	signals := make([]telemetry.Signal, 0)
+	if execErr != nil {
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, execErr.Error(), telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+		return signals
+	}
+	if result.Plan.UsesTextOnlyFallback {
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution used text-only fallback", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
+	}
+	if result.Plan.NeedsParentReview {
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+	}
+	if result.Plan.RequiresFusion && !strings.Contains(result.Plan.ChosenExecutor, "Fusion") {
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "multimodal", req.TaskClass, "fusion-required execution was not assigned to fusion executor", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+	}
+	if !result.HostResult.Handled {
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "host did not handle execution request", telemetry.SeverityHigh, result.HostResult.HostName, result.Plan.ChosenExecutor))
+	}
+	return signals
 }
