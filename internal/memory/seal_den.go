@@ -170,3 +170,30 @@ func (s *PostgresStore) WriteGrowthPlan(ctx context.Context, plan den.GrowthPlan
 	}
 	return nil
 }
+
+func (s *PostgresStore) PersistSlotBundleVersion(ctx context.Context, specialistID string, bundleTOML []byte, sourceMap map[string]string, versionLabel, createdBy string) error {
+	const q = `
+		INSERT INTO agent_core.slot_bundle_versions (
+			id,
+			specialist_id,
+			bundle_toml,
+			source_map,
+			version_label,
+			created_by
+		) VALUES ($1,$2,$3,$4,$5,$6)`
+	sourceJSON, err := json.Marshal(sourceMap)
+	if err != nil {
+		return fmt.Errorf("marshal slot bundle source map: %w", err)
+	}
+	if _, err := s.db.Exec(ctx, q,
+		fmt.Sprintf("bundle|%s|%s", specialistID, versionLabel),
+		specialistID,
+		string(bundleTOML),
+		sourceJSON,
+		versionLabel,
+		createdBy,
+	); err != nil {
+		return fmt.Errorf("insert slot bundle version: %w", err)
+	}
+	return nil
+}
