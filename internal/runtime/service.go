@@ -21,16 +21,16 @@ import (
 )
 
 type Task struct {
-	ID                           string
-	Summary                      string
-	Class                        string
-	PrimaryModality              modality.Type
-	SecondaryModalities          []modality.Type
-	CrossModalGroundingRequired  bool
-	AllowTextOnlyFallback        bool
-	PreferredExecutor            string
-	AssetRefs                    []string
-	Prompt                       string
+	ID                          string
+	Summary                     string
+	Class                       string
+	PrimaryModality             modality.Type
+	SecondaryModalities         []modality.Type
+	CrossModalGroundingRequired bool
+	AllowTextOnlyFallback       bool
+	PreferredExecutor           string
+	AssetRefs                   []string
+	Prompt                      string
 }
 
 type TaskResult struct {
@@ -134,9 +134,76 @@ func (s *Service) Start(ctx context.Context) error {
 		}
 	}
 
+	if s.cfg.Runtime.EnableTaskInbox {
+		inbox := NewTaskInbox(s.cfg.Runtime.TaskInboxDir, s.logger)
+		if inbox == nil {
+			return fmt.Errorf("task inbox enabled but runtime.task_inbox_dir is empty")
+		}
+		if err := inbox.EnsureDirs(); err != nil {
+			return fmt.Errorf("ensure task inbox: %w", err)
+		}
+		s.logger.Info("task inbox enabled",
+			"dir", s.cfg.Runtime.TaskInboxDir,
+			"poll_interval_seconds", s.cfg.Runtime.TaskPollIntervalSeconds,
+		)
+		return s.runTaskInbox(ctx, inbox)
+	}
+
 	<-ctx.Done()
 	s.logger.Info("shutdown requested")
 	return nil
+}
+
+func (s *Service) runTaskInbox(ctx context.Context, inbox *TaskInbox) error {
+	if err := s.processAvailableTasks(ctx, inbox); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Duration(s.cfg.Runtime.TaskPollIntervalSeconds) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			s.logger.Info("task inbox shutdown requested")
+			return nil
+		case <-ticker.C:
+			if err := s.processAvailableTasks(ctx, inbox); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (s *Service) processAvailableTasks(ctx context.Context, inbox *TaskInbox) error {
+	for {
+		queued, err := inbox.ClaimNext()
+		if err != nil {
+			if queued != nil {
+				if markErr := inbox.MarkFailed(queued, err); markErr != nil {
+					return fmt.Errorf("mark failed inbox task: %w", markErr)
+				}
+				continue
+			}
+			return err
+		}
+		if queued == nil {
+			return nil
+		}
+
+		taskCtx, cancel := context.WithTimeout(ctx, time.Duration(s.cfg.Runtime.RequestTimeoutSeconds)*time.Second)
+		_, taskErr := s.ProcessTask(taskCtx, queued.Task)
+		cancel()
+		if taskErr != nil {
+			if markErr := inbox.MarkFailed(queued, taskErr); markErr != nil {
+				return fmt.Errorf("mark task as failed: %w", markErr)
+			}
+			continue
+		}
+		if err := inbox.MarkProcessed(queued); err != nil {
+			return fmt.Errorf("mark task as processed: %w", err)
+		}
+	}
 }
 
 func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, error) {
