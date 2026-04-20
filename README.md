@@ -56,7 +56,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 - **Layering note**: these are runtime/software layers, not transformer layers; a model may still have dozens of internal transformer layers
 - **Developmental note**: SEAL gives them growth; the harness gives them upbringing
 - **SEAL/DEN note**: SEAL decides when the system should adapt and how adaptation should be governed. DEN is the expansion mechanism: it decides where capacity should change and when new structure is justified because existing capacity is insufficient.
-- **Growth note**: the system is ability-first and DEN-inspired; add governed modules when ability gaps persist rather than treating size alone as maturity
+- **Growth note**: the `growth` package is the experiment-execution layer under governed SEAL and DEN decisions, not a competing governor.
 - **Freeze note**: freeze what is mature; train what is missing, immature, or newly added
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
 - **Memory**: Postgres + pgvector with staged promotion, contradiction staging, audit, rollback, and overflow-summary storage
@@ -98,6 +98,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 4. `sql/seed.sql`
 5. `sql/verify.sql`
 6. `sql/multimodal-memory.sql`
+7. `sql/20260420_seal_den_growth.sql`
 
 ## Current state
 
@@ -122,6 +123,7 @@ The docs are ahead of the implementation in a few places. Start with:
 
 1. keep the schema and Go runtime in sync
 2. make the single-specialist loop runnable end to end
-3. add tests and CI before adding major new surface area
-4. use the Python HAT layer to generate governed corpora from real slots, postmortems, and evals
-5. keep the parent strong at routing, orchestration, arbitration, governance, developmental discipline, dynamic-growth discipline, freeze discipline, and sub-agent discipline without allowing constitutional drift
+3. persist compiled slot bundles and SEAL/DEN records in Postgres once the migration is applied
+4. add tests and CI before adding major new surface area
+5. use the Python HAT layer to generate governed corpora from real slots, postmortems, evals, signals, and proposals
+6. keep the parent strong at routing, orchestration, arbitration, governance, developmental discipline, dynamic-growth discipline, freeze discipline, and sub-agent discipline without allowing constitutional drift
