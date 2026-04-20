@@ -25,14 +25,38 @@ Likely failure modes:
 - Go writes columns that do not exist yet
 - Go expects tables that were never created or renamed
 - lifecycle writes assume richer schema than the DB currently has
+- SEAL/DEN persistence paths exist in Go, but the migration was never applied in the target DB
 
 ### mitigation
 - treat schema/runtime reconciliation as a tracked task
 - prefer explicit migrations over silent schema edits
+- add new migrations to the documented bootstrap order
 
 ---
 
-## 3. rename drift after repo rename
+## 3. schema namespace drift
+The repository now has more write paths and a new SEAL/DEN migration.
+If later schema files stop using the `agent_core` convention consistently, the runtime can appear to work while writing into the wrong place.
+
+### mitigation
+- keep `agent_core` as the canonical runtime schema
+- set or qualify schema names consistently in migrations
+- verify new tables are created where the Go runtime expects them
+
+---
+
+## 4. identifier format drift
+The SEAL/DEN scaffolding currently uses text-style IDs in Go and SQL.
+If a later migration or runtime path silently switches to generated UUIDs without updating the other side, proposal, growth-plan, or bundle persistence can fail in confusing ways.
+
+### mitigation
+- document identifier shape explicitly in SQL and Go
+- keep reconciliation docs updated when identifier strategy changes
+- avoid changing ID strategy casually once persistence has begun
+
+---
+
+## 5. rename drift after repo rename
 The repository has been renamed to `SEAL_HAT_LLM`, but name drift can still occur across:
 - docs
 - Go module path
@@ -45,7 +69,7 @@ The repository has been renamed to `SEAL_HAT_LLM`, but name drift can still occu
 
 ---
 
-## 4. architecture docs ahead of implementation
+## 6. architecture docs ahead of implementation
 The docs are detailed and useful, but they are broader than the live runtime.
 
 ### mitigation
@@ -54,7 +78,7 @@ The docs are detailed and useful, but they are broader than the live runtime.
 
 ---
 
-## 5. preserved `.md` code versus live code confusion
+## 7. preserved `.md` code versus live code confusion
 Some code is preserved as `.md` due to in-session connector limitations.
 
 ### mitigation
@@ -64,7 +88,7 @@ Some code is preserved as `.md` due to in-session connector limitations.
 
 ---
 
-## 6. retrieval scoring contract drift
+## 8. retrieval scoring contract drift
 The retrieval wrapper and SQL function must agree on result shape and score semantics.
 
 ### mitigation
@@ -73,7 +97,7 @@ The retrieval wrapper and SQL function must agree on result shape and score sema
 
 ---
 
-## 7. health and lifecycle semantics drift
+## 9. health and lifecycle semantics drift
 Health score logic, degraded rules, and lifecycle transitions may drift between docs, Go code, and SQL helpers.
 
 ### mitigation
@@ -83,7 +107,7 @@ Health score logic, degraded rules, and lifecycle transitions may drift between 
 
 ---
 
-## 8. training/data format proliferation
+## 10. training/data format proliferation
 The Python HAT layer can emit multiple formats.
 That is useful, but it increases the risk of ambiguity about which format is canonical.
 
@@ -93,16 +117,18 @@ That is useful, but it increases the risk of ambiguity about which format is can
 
 ---
 
-## 9. CI false confidence
+## 11. CI false confidence
 Basic CI is helpful, but passing import/build checks does not mean the runtime is truly integrated.
+This is especially true now that `cmd/verify` can safely warn and continue when the SEAL/DEN migration is absent.
 
 ### mitigation
 - treat CI as a floor, not a proof of completeness
 - add DB-backed smoke coverage later
+- distinguish soft-fallback verify behavior from fully migrated runtime behavior
 
 ---
 
-## 10. first-specialist scope creep
+## 12. first-specialist scope creep
 The first specialist is correctly focused on CS/software engineering and tool development, but it could gradually become too broad.
 
 ### mitigation
@@ -114,7 +140,9 @@ The first specialist is correctly focused on CS/software engineering and tool de
 ## summary
 If the repo breaks, the most likely causes are:
 - schema/runtime mismatch
+- migration drift
 - function contract drift
+- identifier drift
 - naming drift
 - docs outrunning implementation
 - preserved-code ambiguity
