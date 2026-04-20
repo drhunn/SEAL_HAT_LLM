@@ -9,15 +9,47 @@ on:
 jobs:
   go:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: llm_harness
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d llm_harness"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap verify database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for f in \
+            sql/postgres-ddl.sql \
+            sql/three-tier-memory.sql \
+            sql/functions.sql \
+            sql/seed.sql \
+            sql/verify.sql \
+            sql/multimodal-memory.sql \
+            sql/20260420_seal_den_growth.sql; do
+            psql "postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable" -v ON_ERROR_STOP=1 -f "$f"
+          done
       - name: Go build
         run: go build ./...
       - name: Go test
         run: go test ./...
+      - name: Strict verify
+        run: go run ./cmd/verify -config config/runtime.example.toml -mode strict
 
   python:
     runs-on: ubuntu-latest
