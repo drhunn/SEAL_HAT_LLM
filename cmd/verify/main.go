@@ -106,6 +106,12 @@ func main() {
 		"source_map_count", summary.SourceMapCount,
 		"encoded_bytes", len(bundleBytes),
 	)
+	versionLabel := time.Now().UTC().Format("20060102T150405Z")
+	if err := store.PersistSlotBundleVersion(ctx, cfg.Runtime.SpecialistID, bundleBytes, bundle.SourceMap, versionLabel, cfg.Harness.DefaultCreatedBy); err != nil {
+		logger.Warn("slot bundle persistence unavailable", "err", err)
+	} else {
+		logger.Info("slot bundle persisted", "version_label", versionLabel)
+	}
 
 	collector := telemetry.NewCollector(logger)
 	signalStore := telemetry.NewMemoryStore()
@@ -124,9 +130,13 @@ func main() {
 	} else {
 		logger.Info("retrieval smoke test ok", "result_count", len(retrievalResults))
 	}
-	if err := collector.Write(ctx, signalStore, memory.SignalsForRetrieval(cfg.Runtime.SpecialistID, "analysis", retrievalResults, retrievalErr, collector)...); err != nil {
-		logger.Error("retrieval telemetry write failed", "err", err)
+	retrievalSignals := memory.SignalsForRetrieval(cfg.Runtime.SpecialistID, "analysis", retrievalResults, retrievalErr, collector)
+	if err := collector.Write(ctx, signalStore, retrievalSignals...); err != nil {
+		logger.Error("retrieval telemetry memory write failed", "err", err)
 		os.Exit(1)
+	}
+	if err := collector.Write(ctx, store, retrievalSignals...); err != nil {
+		logger.Warn("retrieval telemetry persistence unavailable", "err", err)
 	}
 
 	routingService := routing.NewService(logger)
@@ -150,9 +160,13 @@ func main() {
 		"chosen_target", routingDecision.ChosenTarget,
 		"primary_modality", routingDecision.PrimaryModality,
 	)
-	if err := collector.Write(ctx, signalStore, routing.SignalsForDecision(cfg.Runtime.SpecialistID, routingInput, routingDecision, collector)...); err != nil {
-		logger.Error("routing telemetry write failed", "err", err)
+	routingSignals := routing.SignalsForDecision(cfg.Runtime.SpecialistID, routingInput, routingDecision, collector)
+	if err := collector.Write(ctx, signalStore, routingSignals...); err != nil {
+		logger.Error("routing telemetry memory write failed", "err", err)
 		os.Exit(1)
+	}
+	if err := collector.Write(ctx, store, routingSignals...); err != nil {
+		logger.Warn("routing telemetry persistence unavailable", "err", err)
 	}
 
 	var executionResult execution.Result
@@ -179,9 +193,13 @@ func main() {
 			"host", executionResult.HostResult.HostName,
 			"handled", executionResult.HostResult.Handled,
 		)
-		if err := collector.Write(ctx, signalStore, execution.SignalsForExecution(cfg.Runtime.SpecialistID, executionReq, executionResult, executionErr, collector)...); err != nil {
-			logger.Error("execution telemetry write failed", "err", err)
+		executionSignals := execution.SignalsForExecution(cfg.Runtime.SpecialistID, executionReq, executionResult, executionErr, collector)
+		if err := collector.Write(ctx, signalStore, executionSignals...); err != nil {
+			logger.Error("execution telemetry memory write failed", "err", err)
 			os.Exit(1)
+		}
+		if err := collector.Write(ctx, store, executionSignals...); err != nil {
+			logger.Warn("execution telemetry persistence unavailable", "err", err)
 		}
 	}
 
@@ -191,6 +209,11 @@ func main() {
 		logger.Error("seal review failed", "err", err)
 		os.Exit(1)
 	}
+	for _, proposal := range proposals {
+		if err := store.WriteProposal(ctx, proposal); err != nil {
+			logger.Warn("adaptation proposal persistence unavailable", "proposal_id", proposal.ID, "err", err)
+		}
+	}
 	logger.Info("seal verify ok", "signal_count", signalStore.Count(), "proposal_count", len(proposals), "persisted_proposal_count", proposalStore.Count())
 
 	if len(proposals) > 0 {
@@ -199,6 +222,9 @@ func main() {
 		if err != nil {
 			logger.Error("den growth planning failed", "err", err)
 			os.Exit(1)
+		}
+		if err := store.WriteGrowthPlan(ctx, *plan); err != nil {
+			logger.Warn("growth plan persistence unavailable", "growth_plan_id", plan.ID, "err", err)
 		}
 		logger.Info("den verify ok", "proposal_id", proposals[0].ID, "growth_surface", plan.Surface, "growth_plan_count", growthPlanStore.Count())
 	}
