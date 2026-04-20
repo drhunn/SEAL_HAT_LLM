@@ -19,6 +19,7 @@ Expected by runtime for:
 - specialist existence
 - status reads/writes
 - health reads/writes
+- foreign-key anchoring for specialist-scoped persistence
 
 ### `agent_core.slots`
 Expected by runtime for:
@@ -29,6 +30,12 @@ Expected by runtime for:
 Expected by runtime for:
 - projected summary writes
 - version tracking
+
+### `agent_core.slot_bundle_versions`
+Expected by runtime for:
+- canonical compiled slot bundle persistence
+- source-map persistence
+- bundle version tracking from `cmd/verify` and later slot sync paths
 
 ### `agent_core.memory_records`
 Expected by runtime for:
@@ -62,6 +69,54 @@ Expected by runtime for:
 ### `agent_core.routing_audit`
 Expected by runtime for:
 - routing audit writes
+
+### `agent_core.adaptation_signals`
+Expected by runtime for:
+- durable telemetry persistence from retrieval, routing, and execution signal helpers
+- SEAL review input when using the DB-backed path
+
+### `agent_core.gap_clusters`
+Expected by runtime for:
+- future durable SEAL clustering state
+
+### `agent_core.adaptation_proposals`
+Expected by runtime for:
+- durable SEAL proposal persistence
+
+### `agent_core.growth_plans`
+Expected by runtime for:
+- durable DEN growth-plan persistence
+
+### `agent_core.growth_experiments`
+Expected by runtime for:
+- later governed growth experiment lifecycle tracking
+
+### `agent_core.lineage_nodes`
+### `agent_core.lineage_edges`
+Expected by runtime for:
+- lineage persistence for new specialists, splits, derived branches, and related governed growth artifacts
+
+### `agent_core.promotion_decisions`
+Expected by runtime for:
+- later oversight-driven promotion or rollback tracking
+
+---
+
+## identifier and schema expectations
+
+### schema namespace
+The canonical runtime schema is:
+- `agent_core`
+
+New migrations should either:
+- set `search_path` to `agent_core, public`, or
+- fully qualify `agent_core.` table names consistently
+
+### identifier shape
+For the current SEAL/DEN scaffolding, the Go runtime and SQL are aligned on:
+- **text-style IDs** for signals, proposals, plans, bundle versions, lineage records, and promotion decisions
+
+The current runtime does **not** assume DB-generated UUIDs for these paths.
 
 ---
 
@@ -168,6 +223,70 @@ Runtime currently expects fields for:
 - override_by
 - multi_specialist_review
 - notes
+
+### canonical slot bundle persistence
+Runtime currently expects:
+- text `id`
+- `specialist_id`
+- `bundle_toml`
+- `source_map` as JSON
+- `version_label`
+- `created_by`
+
+### telemetry signal persistence
+Runtime currently expects:
+- text `id`
+- `specialist_id`
+- `category`
+- `severity`
+- `surface`
+- `task_class`
+- `summary`
+- `evidence_refs` as JSON
+- `occurred_at`
+
+### adaptation proposal persistence
+Runtime currently expects:
+- text `id`
+- `specialist_id`
+- `cluster_id` as nullable text
+- `surface`
+- `reason`
+- `requested_by`
+- `risk_level`
+- `requires_harness`
+- `requires_parent`
+- `rollback_required`
+- `status`
+
+### growth-plan persistence
+Runtime currently expects:
+- text `id`
+- `proposal_id`
+- `specialist_id`
+- `surface`
+- `reason`
+- `experiment_name`
+- `freeze_plan` as JSON
+- `rollback_plan` as JSON
+- `status`
+
+---
+
+## verify expectations
+`cmd/verify` now expects to be able to:
+- compile the canonical slot bundle
+- encode it to TOML
+- attempt to persist the bundle version
+- run retrieval smoke checks
+- emit retrieval, routing, and execution signals
+- run SEAL review over those signals
+- attempt to persist SEAL proposals
+- run DEN planning from the first proposal
+- attempt to persist the resulting growth plan
+
+The current verify path can warn and continue if the SEAL/DEN migration has not been applied yet.
+That is useful for staged bring-up, but it should not be confused with a fully migrated runtime.
 
 ---
 
