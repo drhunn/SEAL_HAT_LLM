@@ -39,6 +39,22 @@ Structured slots should feel like native self-interfaces.
 
 ---
 
+## hybrid slot doctrine
+Markdown slot files remain the human-editable authoring layer.
+
+The runtime path is now intended to be:
+- `.md` slot files
+- `SlotIR`
+- `SlotPacket`
+- JAX model-side slot modules
+
+That means the system is being moved toward a hybrid design where:
+- humans still edit markdown slots
+- the harness compiles them into structured runtime state
+- the model can eventually consume live slot packets as learned internal organs instead of only as flattened prompt text
+
+---
+
 ## current Python components
 
 ### `python/hat_llm/types.py`
@@ -53,6 +69,18 @@ Rule helpers for:
 
 ### `python/hat_llm/slot_prompt.py`
 Builds a harness-native runtime frame, control-token header, policy state, and slot-aware prompt context from runtime state and slot files.
+
+### `python/hat_llm/slot_ir.py`
+Defines the hybrid slot intermediate representation used to carry structured slot records derived from markdown.
+
+### `python/hat_llm/slot_compiler.py`
+Compiles markdown-backed slot bundles into `SlotIR` records with families, summaries, rules, and authority metadata.
+
+### `python/hat_llm/slot_packet.py`
+Defines the fixed-shape slot-packet scaffold that bridges structured slot state into model-facing runtime inputs.
+
+### `python/hat_llm/slot_runtime.py`
+Builds runtime `SlotPacket` objects from loaded markdown slot files and runtime state.
 
 ### `python/hat_llm/repo_loader.py`
 Loads real specialist slot markdown files from the repository.
@@ -100,8 +128,14 @@ Builds SFT JSONL, split manifests, HF-style JSON exports, and optional `DatasetD
 JAX/Flax/Optax training scaffold for harness-native HAT models.
 This is the active training entrypoint.
 
-### `python/hat_llm/lora_train.py`
-Legacy PyTorch LoRA scaffold retained temporarily as an archival compatibility path while the repository transitions to JAX-first training.
+### `python/hat_llm_jax/slot_encoder.py`
+Flax slot-encoder scaffold for turning slot-token inputs plus family/authority ids into learned slot vectors.
+
+### `python/hat_llm_jax/slot_adapters.py`
+Flax slot-adapter scaffold for injecting slot-conditioned deltas into transformer hidden state.
+
+### `python/hat_llm_jax/model.py`
+Hybrid slot-aware model scaffold showing how a JAX model can accept slot-conditioned state.
 
 ### `python/hat_llm/cli.md`
 Preserved archival copy of the older CLI implementation.
@@ -125,6 +159,7 @@ It currently supports:
 - generating simple train/validation/test splits
 - exporting optional `datasets.DatasetDict` artifacts
 - providing a JAX training scaffold for later refinement
+- scaffolding the markdown -> SlotIR -> SlotPacket -> model-side-slot path
 
 ---
 
@@ -185,7 +220,9 @@ It does not yet include:
 - mature RLHF / DPO / GRPO loops
 - direct model serving
 - multimodal HAT corpus generation
-- slot-family adapter banks beyond the current prompt-and-control-token scaffold
+- fully integrated slot-packet training inside `jax_train.py`
+- slot-family adapter banks wired into a production transformer stack beyond the current scaffolds
+- DEN-style dynamic slot growth
 
 Those can be added later on top of the current dataset and policy scaffold.
 
@@ -207,9 +244,8 @@ That means the model should learn:
 
 ## next steps
 Strong next steps for the Python HAT layer are:
-- multimodal HAT corpus generation
-- richer context-budget-aware dataset generation
-- stronger lineage-governance examples for parent and specialist roles
-- benchmarked JAX training recipes
-- direct integration of eval categories into training mix generation
-- later slot-family adapters so more of the harness-native contract moves from prompt form into model-side structure
+- integrate `SlotPacket` generation into `jax_train.py`
+- train the model to consume runtime slot packets, not just prompt-side slot framing
+- benchmark JAX training recipes
+- add later slot-family adapters so more of the harness-native contract moves from prompt form into model-side structure
+- extend the hybrid scaffolding into a production slot-aware model path
