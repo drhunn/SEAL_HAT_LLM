@@ -14,6 +14,7 @@ from flax.training import train_state
 
 from .repo_loader import RepositoryLoader
 from .slot_packet import SlotPacketConfig
+from .slot_packet_io import load_slot_packet_json, slot_packet_to_jax_arrays
 from .slot_runtime import build_slot_packet
 from .types import RuntimeState
 from hat_llm_jax.model import HybridRuntimeSlotModel
@@ -41,6 +42,7 @@ class TrainConfig:
     num_layers: int = 4
     slot_max_length: int = 128
     slot_max_count: int = 16
+    slot_packet_path: str = ""
 
 
 def build_text(example: dict[str, object]) -> str:
@@ -86,6 +88,10 @@ def _tokenize_dataset(dataset_path: str, model_name_or_path: str, max_length: in
 
 
 def _build_slot_inputs(cfg: TrainConfig, tokenizer):
+    if cfg.slot_packet_path:
+        packet = load_slot_packet_json(cfg.slot_packet_path)
+        return slot_packet_to_jax_arrays(packet, tokenizer, cfg.slot_max_length, cfg.slot_max_count)
+
     slot_loader = RepositoryLoader(cfg.repo_root)
     slots = slot_loader.load_specialist_slots(cfg.specialist_id)
     runtime = RuntimeState(
@@ -98,19 +104,7 @@ def _build_slot_inputs(cfg: TrainConfig, tokenizer):
         slots,
         SlotPacketConfig(max_slots=cfg.slot_max_count, max_chars_per_slot=512),
     )
-    encoded = tokenizer(
-        packet.slot_texts,
-        truncation=True,
-        max_length=cfg.slot_max_length,
-        padding="max_length",
-    )
-    return {
-        "slot_token_ids": jnp.asarray(encoded["input_ids"], dtype=jnp.int32),
-        "slot_token_mask": jnp.asarray(encoded["attention_mask"], dtype=jnp.int32),
-        "slot_family_ids": jnp.asarray(packet.slot_family_ids, dtype=jnp.int32),
-        "slot_authority_ids": jnp.asarray(packet.slot_authority_ids, dtype=jnp.int32),
-        "slot_enabled_mask": jnp.asarray(packet.slot_enabled_mask, dtype=jnp.float32),
-    }
+    return slot_packet_to_jax_arrays(packet, tokenizer, cfg.slot_max_length, cfg.slot_max_count)
 
 
 def _iterate_batches(dataset, batch_size: int):
@@ -159,6 +153,7 @@ def _save_hybrid_artifacts(cfg: TrainConfig, params, tokenizer) -> None:
                 "slot_max_count": cfg.slot_max_count,
                 "specialist_id": cfg.specialist_id,
                 "runtime_mode": cfg.runtime_mode,
+                "slot_packet_path": cfg.slot_packet_path,
             },
             indent=2,
         ),
@@ -263,14 +258,15 @@ def main() -> None:
     parser.add_argument("--logging-steps", type=int, default=10)
     parser.add_argument("--save-steps", type=int, default=250)
     parser.add_argument("--hybrid-slot-model", action="store_true", help="train the scaffolded hybrid slot-aware model")
-    parser.add_argument("--repo-root", default=".", help="repository root for slot loading")
-    parser.add_argument("--specialist-id", default="csse-tool-development-specialist-01", help="specialist id for runtime slot loading")
+    parser.add_argument("--repo-root", default=".", help="repository root for slot loading fallback")
+    parser.add_argument("--specialist-id", default="csse-tool-development-specialist-01", help="specialist id for runtime slot loading fallback")
     parser.add_argument("--runtime-mode", default="active", help="runtime mode for compiled slot packets")
     parser.add_argument("--d-model", type=int, default=256)
     parser.add_argument("--d-slot", type=int, default=128)
     parser.add_argument("--num-layers", type=int, default=4)
     parser.add_argument("--slot-max-length", type=int, default=128)
     parser.add_argument("--slot-max-count", type=int, default=16)
+    parser.add_argument("--slot-packet", default="", help="path to Go-exported slot_packet.json")
     args = parser.parse_args()
 
     cfg = TrainConfig(
@@ -294,6 +290,7 @@ def main() -> None:
         num_layers=args.num_layers,
         slot_max_length=args.slot_max_length,
         slot_max_count=args.slot_max_count,
+        slot_packet_path=args.slot_packet,
     )
     run_training(cfg)
 
