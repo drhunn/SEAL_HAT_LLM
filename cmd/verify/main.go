@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
@@ -21,6 +22,37 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
+
+type verifyMode string
+
+const (
+	verifyModeSoft   verifyMode = "soft"
+	verifyModeStrict verifyMode = "strict"
+)
+
+func parseVerifyMode(raw string) (verifyMode, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", string(verifyModeSoft):
+		return verifyModeSoft, nil
+	case string(verifyModeStrict):
+		return verifyModeStrict, nil
+	default:
+		return "", fmt.Errorf("unsupported verify mode %q (expected soft or strict)", raw)
+	}
+}
+
+func handleOptionalFailure(mode verifyMode, logger *slog.Logger, message string, err error, attrs ...any) error {
+	if err == nil {
+		return nil
+	}
+	attrs = append(attrs, "verify_mode", string(mode), "err", err)
+	if mode == verifyModeStrict {
+		logger.Error(message, attrs...)
+		return fmt.Errorf("%s: %w", message, err)
+	}
+	logger.Warn(message, attrs...)
+	return nil
+}
 
 type verifyProposalStore struct {
 	proposals []seal.AdaptationProposal
@@ -50,7 +82,14 @@ func (s *verifyGrowthPlanStore) Count() int {
 
 func main() {
 	cfgPath := flag.String("config", "config/runtime.example.toml", "path to runtime TOML config")
+	modeFlag := flag.String("mode", string(verifyModeSoft), "verify mode: soft or strict")
 	flag.Parse()
+
+	mode, err := parseVerifyMode(*modeFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parse verify mode: %v\n", err)
+		os.Exit(1)
+	}
 
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
@@ -59,6 +98,7 @@ func main() {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel()}))
+	logger.Info("verify mode selected", "verify_mode", string(mode))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Runtime.RequestTimeoutSeconds)*time.Second)
 	defer cancel()
 
@@ -108,7 +148,9 @@ func main() {
 	)
 	versionLabel := time.Now().UTC().Format("20060102T150405Z")
 	if err := store.PersistSlotBundleVersion(ctx, cfg.Runtime.SpecialistID, bundleBytes, bundle.SourceMap, versionLabel, cfg.Harness.DefaultCreatedBy); err != nil {
-		logger.Warn("slot bundle persistence unavailable", "err", err)
+		if fatalErr := handleOptionalFailure(mode, logger, "slot bundle persistence unavailable", err, "version_label", versionLabel); fatalErr != nil {
+			os.Exit(1)
+		}
 	} else {
 		logger.Info("slot bundle persisted", "version_label", versionLabel)
 	}
@@ -119,14 +161,18 @@ func main() {
 	growthPlanStore := &verifyGrowthPlanStore{}
 
 	if _, err := store.HealthSnapshot(ctx, cfg.Runtime.SpecialistID); err != nil {
-		logger.Warn("health snapshot unavailable", "err", err)
+		if fatalErr := handleOptionalFailure(mode, logger, "health snapshot unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
+			os.Exit(1)
+		}
 	} else {
 		logger.Info("health snapshot call ok")
 	}
 
 	retrievalResults, retrievalErr := store.RunCoarseToFineSearch(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5)
 	if retrievalErr != nil {
-		logger.Warn("retrieval smoke test unavailable", "err", retrievalErr)
+		if fatalErr := handleOptionalFailure(mode, logger, "retrieval smoke test unavailable", retrievalErr, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
+			os.Exit(1)
+		}
 	} else {
 		logger.Info("retrieval smoke test ok", "result_count", len(retrievalResults))
 	}
@@ -136,7 +182,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err := collector.Write(ctx, store, retrievalSignals...); err != nil {
-		logger.Warn("retrieval telemetry persistence unavailable", "err", err)
+		if fatalErr := handleOptionalFailure(mode, logger, "retrieval telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
+			os.Exit(1)
+		}
 	}
 
 	routingService := routing.NewService(logger)
@@ -166,7 +214,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err := collector.Write(ctx, store, routingSignals...); err != nil {
-		logger.Warn("routing telemetry persistence unavailable", "err", err)
+		if fatalErr := handleOptionalFailure(mode, logger, "routing telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
+			os.Exit(1)
+		}
 	}
 
 	var executionResult execution.Result
@@ -199,7 +249,9 @@ func main() {
 			os.Exit(1)
 		}
 		if err := collector.Write(ctx, store, executionSignals...); err != nil {
-			logger.Warn("execution telemetry persistence unavailable", "err", err)
+			if fatalErr := handleOptionalFailure(mode, logger, "execution telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -211,7 +263,9 @@ func main() {
 	}
 	for _, proposal := range proposals {
 		if err := store.WriteProposal(ctx, proposal); err != nil {
-			logger.Warn("adaptation proposal persistence unavailable", "proposal_id", proposal.ID, "err", err)
+			if fatalErr := handleOptionalFailure(mode, logger, "adaptation proposal persistence unavailable", err, "proposal_id", proposal.ID); fatalErr != nil {
+				os.Exit(1)
+			}
 		}
 	}
 	logger.Info("seal verify ok", "signal_count", signalStore.Count(), "proposal_count", len(proposals), "persisted_proposal_count", proposalStore.Count())
@@ -224,7 +278,9 @@ func main() {
 			os.Exit(1)
 		}
 		if err := store.WriteGrowthPlan(ctx, *plan); err != nil {
-			logger.Warn("growth plan persistence unavailable", "growth_plan_id", plan.ID, "err", err)
+			if fatalErr := handleOptionalFailure(mode, logger, "growth plan persistence unavailable", err, "growth_plan_id", plan.ID); fatalErr != nil {
+				os.Exit(1)
+			}
 		}
 		logger.Info("den verify ok", "proposal_id", proposals[0].ID, "growth_surface", plan.Surface, "growth_plan_count", growthPlanStore.Count())
 	}
@@ -251,5 +307,5 @@ func main() {
 		"experiment_id", growthResult.ExperimentID,
 	)
 
-	logger.Info("verify complete")
+	logger.Info("verify complete", "verify_mode", string(mode))
 }
