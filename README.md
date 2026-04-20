@@ -69,7 +69,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 
 - `AGENTS.md` — project-wide operating rules
 - `config/` — ACLs, slot schema, registry, routing, memory, and postmortem contracts
-- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, layering, sub-agents, developmental growth, ability-first growth, dynamic architecture, DEN freeze policy, context, and runbooks
+- `docs/` — architecture, implementation status, likely breakpoints, workflows, lineage, layering, sub-agents, developmental growth, ability-first growth, dynamic architecture, SEAL and DEN system architecture, DEN freeze policy, context, and runbooks
 - `templates/` — specialist template pack
 - `specialists/` — instantiated specialists
 - `sql/` — schema, functions, seed, query, and verification scripts
@@ -110,6 +110,7 @@ The docs are ahead of the implementation in a few places. Start with:
 - `docs/model-lineage-strategy.md`
 - `docs/ability-first-growth-strategy.md`
 - `docs/dynamic-architecture-strategy.md`
+- `docs/seal-den-system-architecture.md`
 - `docs/den-freeze-policy.md`
 - `docs/layering-strategy.md`
 - `docs/sub-agent-strategy.md`
