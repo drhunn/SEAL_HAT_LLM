@@ -22,6 +22,7 @@ This document separates the target architecture from the currently implemented s
 - canonical specialist slot bundle compilation and TOML emission
 - runtime startup path
 - bounded runtime task processing path now exists through `runtime.Service.ProcessTask`
+- file-backed runtime task inbox now exists and can claim JSON task files, process them, and move them to `processed/` or `failed/` without deleting them
 - harness incident handling is now wired into the bounded task path for execution errors, parent-review requirements, and high-severity runtime signals
 - harness service scaffold
 - postmortem creation path
@@ -38,6 +39,7 @@ This document separates the target architecture from the currently implemented s
 - oversight and lineage scaffolds now exist
 - basic Go unit tests for retrieval helpers, routing, execution planning, recovery planner logic, slot compiler behavior, runtime task helpers, SEAL proposal generation, and DEN plan generation
 - DB-backed runtime integration tests now cover bounded task success persistence and failure-triggered postmortem/eval writes when `TEST_DATABASE_DSN` is provided
+- task inbox unit tests now cover file claiming, processed archiving, failed archiving, and error-note emission
 
 ### SQL scaffold
 - base schema for specialists, slots, memory records, embeddings, postmortems, eval cases, self-edit candidates, and routing audit
@@ -70,7 +72,7 @@ This document separates the target architecture from the currently implemented s
 ## partially implemented / scaffolded
 
 ### runtime orchestration
-- parent/specialist orchestration now has a bounded single-task execution path, but not yet a full live production loop or external task queue
+- parent/specialist orchestration now has a bounded single-task execution path and a file-backed task inbox, but not yet a full live production loop with remote intake or queue semantics
 - sub-agent orchestration remains mostly architectural and policy-level rather than deeply implemented
 - tool broker integration is still conceptual
 - slot DB/filesystem synchronization is now stronger because the canonical bundle compiler exists, but DB-backed bundle reconciliation is still not a full live sync workflow
@@ -105,6 +107,7 @@ This document separates the target architecture from the currently implemented s
 - architecture docs are ahead of production readiness
 - multimodal support is no longer just imagined, but still not operationally complete
 - DEN-style dynamic growth policy is now closer to code, but oversight/promotion/rollback are still not fully enforced end to end
+- the file-backed inbox is intentionally conservative and local; it is not yet a remote intake API or a distributed queue
 
 ---
 
@@ -116,6 +119,7 @@ This document separates the target architecture from the currently implemented s
 - distributed or large-scale training workflows
 - live multimodal model integration beyond the current scaffolding
 - full governed dynamic-growth machinery for branches, expert banks, and structured pruning loops
+- remote task intake APIs and queue backends
 
 ---
 
@@ -138,10 +142,10 @@ That means:
 11. telemetry writes, SEAL proposal writes, and DEN plan writes work durably
 12. context-overflow policy starts being implemented concretely
 13. the first ability-growth path is executed in a governed way rather than only described in docs
-14. the bounded runtime task path graduates into a real external task intake loop
+14. the bounded runtime task path and file inbox graduate into a more explicit intake contract
 
 ---
 
 ## summary
 This repository is no longer just an idea, but it is not yet a production runtime.
-It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, DB-backed runtime integration coverage, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
+It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, a conservative file-backed task inbox, DB-backed runtime integration coverage, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
