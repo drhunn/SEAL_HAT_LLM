@@ -26,6 +26,9 @@ type AppConfig struct {
 		DefaultPrimaryModality    string `toml:"default_primary_modality"`
 		AllowTextOnlyFallback     bool   `toml:"allow_text_only_fallback"`
 		EnableMultimodalSmokeTest bool   `toml:"enable_multimodal_smoke_test"`
+		EnableTaskInbox           bool   `toml:"enable_task_inbox"`
+		TaskInboxDir              string `toml:"task_inbox_dir"`
+		TaskPollIntervalSeconds   int    `toml:"task_poll_interval_seconds"`
 	} `toml:"runtime"`
 	Harness struct {
 		AutoCreatePostmortems bool   `toml:"auto_create_postmortems"`
@@ -66,6 +69,12 @@ func Load(path string) (*AppConfig, error) {
 	}
 	if cfg.Runtime.DefaultPrimaryModality == "" {
 		cfg.Runtime.DefaultPrimaryModality = "text"
+	}
+	if cfg.Runtime.TaskPollIntervalSeconds <= 0 {
+		cfg.Runtime.TaskPollIntervalSeconds = 5
+	}
+	if cfg.Runtime.EnableTaskInbox && cfg.Runtime.TaskInboxDir == "" {
+		cfg.Runtime.TaskInboxDir = "./artifacts/task_inbox"
 	}
 
 	return &cfg, nil
