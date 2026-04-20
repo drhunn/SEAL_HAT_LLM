@@ -37,6 +37,7 @@ This document separates the target architecture from the currently implemented s
 - DEN growth planning scaffold now exists
 - oversight and lineage scaffolds now exist
 - basic Go unit tests for retrieval helpers, routing, execution planning, recovery planner logic, slot compiler behavior, runtime task helpers, SEAL proposal generation, and DEN plan generation
+- DB-backed runtime integration tests now cover bounded task success persistence and failure-triggered postmortem/eval writes when `TEST_DATABASE_DSN` is provided
 
 ### SQL scaffold
 - base schema for specialists, slots, memory records, embeddings, postmortems, eval cases, self-edit candidates, and routing audit
@@ -60,6 +61,7 @@ This document separates the target architecture from the currently implemented s
 ### CI and checks
 - basic GitHub Actions workflow exists
 - Go build/test is wired into CI
+- CI now injects `TEST_DATABASE_DSN` for DB-backed runtime integration coverage
 - Python compile checks and unit tests are wired into CI
 - `make verify` exists for schema/runtime smoke checking
 
@@ -142,4 +144,4 @@ That means:
 
 ## summary
 This repository is no longer just an idea, but it is not yet a production runtime.
-It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
+It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, DB-backed runtime integration coverage, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
