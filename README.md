@@ -55,6 +55,7 @@ A governed scaffold for a DEN-style, ability-first agent system with:
 - **Layers**: 5 implementation layers — interface, governance, execution, oversight, persistence
 - **Layering note**: these are runtime/software layers, not transformer layers; a model may still have dozens of internal transformer layers
 - **Developmental note**: SEAL gives them growth; the harness gives them upbringing
+- **SEAL/DEN note**: SEAL decides when the system should adapt and how adaptation should be governed. DEN is the expansion mechanism: it decides where capacity should change and when new structure is justified because existing capacity is insufficient.
 - **Growth note**: the system is ability-first and DEN-inspired; add governed modules when ability gaps persist rather than treating size alone as maturity
 - **Freeze note**: freeze what is mature; train what is missing, immature, or newly added
 - **Slots**: `IDENTITY.md`, `SOUL.md`, `AGENTS.md`, `TOOLS.md`, `SKILLS.md`, `PROMPT.md`, `HEARTBEAT.md`, `MEMORY.md`, `DREAMS.md`, `POSTMORTEM.md`
