@@ -10,14 +10,43 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/den"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/growth"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/seal"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
+
+type verifyProposalStore struct {
+	proposals []seal.AdaptationProposal
+}
+
+func (s *verifyProposalStore) WriteProposal(ctx context.Context, proposal seal.AdaptationProposal) error {
+	s.proposals = append(s.proposals, proposal)
+	return nil
+}
+
+func (s *verifyProposalStore) Count() int {
+	return len(s.proposals)
+}
+
+type verifyGrowthPlanStore struct {
+	plans []den.GrowthPlan
+}
+
+func (s *verifyGrowthPlanStore) WriteGrowthPlan(ctx context.Context, plan den.GrowthPlan) error {
+	s.plans = append(s.plans, plan)
+	return nil
+}
+
+func (s *verifyGrowthPlanStore) Count() int {
+	return len(s.plans)
+}
 
 func main() {
 	cfgPath := flag.String("config", "config/runtime.example.toml", "path to runtime TOML config")
@@ -78,16 +107,26 @@ func main() {
 		"encoded_bytes", len(bundleBytes),
 	)
 
+	collector := telemetry.NewCollector(logger)
+	signalStore := telemetry.NewMemoryStore()
+	proposalStore := &verifyProposalStore{}
+	growthPlanStore := &verifyGrowthPlanStore{}
+
 	if _, err := store.HealthSnapshot(ctx, cfg.Runtime.SpecialistID); err != nil {
 		logger.Warn("health snapshot unavailable", "err", err)
 	} else {
 		logger.Info("health snapshot call ok")
 	}
 
-	if _, err := store.RunCoarseToFineSearch(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5); err != nil {
-		logger.Warn("retrieval smoke test unavailable", "err", err)
+	retrievalResults, retrievalErr := store.RunCoarseToFineSearch(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5)
+	if retrievalErr != nil {
+		logger.Warn("retrieval smoke test unavailable", "err", retrievalErr)
 	} else {
-		logger.Info("retrieval smoke test ok")
+		logger.Info("retrieval smoke test ok", "result_count", len(retrievalResults))
+	}
+	if err := collector.Write(ctx, signalStore, memory.SignalsForRetrieval(cfg.Runtime.SpecialistID, "analysis", retrievalResults, retrievalErr, collector)...); err != nil {
+		logger.Error("retrieval telemetry write failed", "err", err)
+		os.Exit(1)
 	}
 
 	routingService := routing.NewService(logger)
@@ -101,18 +140,25 @@ func main() {
 	executionService := execution.NewService(logger, hostRegistry)
 	growthService := growth.NewService(store, logger)
 	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
-	routingDecision := routingService.DecideTask(ctx, routing.Input{
+	routingInput := routing.Input{
 		TaskSummary:     "verify multimodal routing",
 		TaskClass:       "analysis",
 		PrimaryModality: primary,
-	})
+	}
+	routingDecision := routingService.DecideTask(ctx, routingInput)
 	logger.Info("routing verify ok",
 		"chosen_target", routingDecision.ChosenTarget,
 		"primary_modality", routingDecision.PrimaryModality,
 	)
+	if err := collector.Write(ctx, signalStore, routing.SignalsForDecision(cfg.Runtime.SpecialistID, routingInput, routingDecision, collector)...); err != nil {
+		logger.Error("routing telemetry write failed", "err", err)
+		os.Exit(1)
+	}
 
+	var executionResult execution.Result
+	var executionErr error
 	if cfg.Runtime.EnableMultimodalSmokeTest {
-		result, err := executionService.Execute(ctx, execution.Request{
+		executionReq := execution.Request{
 			TaskSummary:                 "verify multimodal execution",
 			TaskClass:                   "evidence_fusion",
 			PrimaryModality:             modality.Image,
@@ -121,17 +167,40 @@ func main() {
 			AllowTextOnlyFallback:       cfg.Runtime.AllowTextOnlyFallback,
 			AssetRefs:                   []string{"sandbox://verify/image-1"},
 			Prompt:                      "Verify image and text fusion.",
-		})
-		if err != nil {
-			logger.Error("execution verify failed", "err", err)
+		}
+		executionResult, executionErr = executionService.Execute(ctx, executionReq)
+		if executionErr != nil {
+			logger.Error("execution verify failed", "err", executionErr)
 			os.Exit(1)
 		}
 		logger.Info("execution verify ok",
-			"executor", result.Plan.ChosenExecutor,
-			"execution_mode", result.Plan.ExecutionMode,
-			"host", result.HostResult.HostName,
-			"handled", result.HostResult.Handled,
+			"executor", executionResult.Plan.ChosenExecutor,
+			"execution_mode", executionResult.Plan.ExecutionMode,
+			"host", executionResult.HostResult.HostName,
+			"handled", executionResult.HostResult.Handled,
 		)
+		if err := collector.Write(ctx, signalStore, execution.SignalsForExecution(cfg.Runtime.SpecialistID, executionReq, executionResult, executionErr, collector)...); err != nil {
+			logger.Error("execution telemetry write failed", "err", err)
+			os.Exit(1)
+		}
+	}
+
+	sealService := seal.NewService(signalStore, proposalStore, logger)
+	proposals, err := sealService.ReviewSpecialist(ctx, cfg.Runtime.SpecialistID, 100)
+	if err != nil {
+		logger.Error("seal review failed", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("seal verify ok", "signal_count", signalStore.Count(), "proposal_count", len(proposals), "persisted_proposal_count", proposalStore.Count())
+
+	if len(proposals) > 0 {
+		denService := den.NewService(growthPlanStore, logger)
+		plan, err := denService.PlanFromProposal(ctx, proposals[0])
+		if err != nil {
+			logger.Error("den growth planning failed", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("den verify ok", "proposal_id", proposals[0].ID, "growth_surface", plan.Surface, "growth_plan_count", growthPlanStore.Count())
 	}
 
 	growthResult, err := growthService.StageExperiment(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, growth.Assessment{
