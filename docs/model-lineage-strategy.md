@@ -63,6 +63,15 @@ A specialist should normally be:
 
 The intent is to replace a traditional mixture-of-experts style internal expert arrangement with **explicit governed specialist models** that are easier to audit, route to, benchmark, promote, and retire.
 
+In the later target architecture, a specialist should not be treated as only a model file.
+It should be treated as a **model unit bundle** containing at least:
+- the specialist model artifact
+- the specialist slot pack
+- the specialist harness configuration
+- the embedded Postgres bootstrap or seed state for that specialist
+- eval hooks and lineage metadata
+- rollback information
+
 ### 4. micro-expert policy
 Smaller helper branches may be created when justified by:
 - latency pressure
@@ -99,6 +108,7 @@ A governed ability-growth cycle should usually look like:
 8. activation, refinement, pruning, or rejection follows
 
 When the target is a specialist, the expected result is an explicit descendant model artifact that can be routed to directly by the parent.
+In the later architecture, that should mean a full **model-unit bundle** rather than just a bare model blob.
 
 ---
 
@@ -120,6 +130,12 @@ Every descendant or ability module should have a tracked artifact record contain
 If a structure cannot be traced back to its lineage cleanly, it should not be treated as a first-class governed family member.
 
 This requirement is especially important for specialists, because a specialist is supposed to be a real derived model artifact, not just a routing name.
+
+Later versions should also track bundle-level fields such as:
+- harness version or config ref
+- embedded Postgres bootstrap ref
+- slot bundle version
+- shared-tool compatibility or contract version
 
 ---
 
@@ -143,6 +159,14 @@ Preferred sequence:
 
 ---
 
+## tool-plane note
+Later versions are intended to move tools into a shared RPC/IPC plane where multiple harnesses can use the same tool executable.
+That does not change lineage ownership.
+The shared tool executable is not the specialist.
+The specialist remains the lineage-bearing model unit, and tool use remains governed by the local harness for that unit.
+
+---
+
 ## anti-patterns
 Do not:
 - mutate the constitutional root casually
@@ -155,6 +179,7 @@ Do not:
 - let the parent approve activation without evidence
 - let the parent perform uncontrolled model surgery directly
 - pretend a specialist exists as a governed model artifact when it is only a name in a router
+- pretend a model artifact alone is enough when the intended deployment unit is model + harness + local store
 
 ---
 
@@ -165,6 +190,7 @@ The default lineage strategy for `SEAL_HAT_LLM` is:
 - let the parent understand ability growth, split, duplication, and pruning at the policy and approval level
 - grow overlays, descendants, and specialists only when persistent ability gaps justify them
 - treat specialists as explicit smaller descendant models for narrow recurring task families
+- package later specialists as governed model units with local harness and local embedded Postgres state
 - prune or compress only after usefulness is proven
 - track every descendant and ability module with lineage and eval evidence
 
