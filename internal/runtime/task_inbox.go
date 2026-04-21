@@ -100,6 +100,12 @@ func (i *TaskInbox) ClaimNext() (*queuedTask, error) {
 	if err := validateTaskFile(taskFile); err != nil {
 		return queued, fmt.Errorf("validate task file %s: %w", name, err)
 	}
+	var taskHints struct {
+		PreferredUnitID string `json:"preferred_unit_id"`
+	}
+	if err := json.Unmarshal(data, &taskHints); err != nil {
+		return queued, fmt.Errorf("decode task unit hints %s: %w", name, err)
+	}
 
 	queued.Task = Task{
 		ID:                          firstNonEmpty(strings.TrimSpace(taskFile.ID), queued.Task.ID),
@@ -110,6 +116,7 @@ func (i *TaskInbox) ClaimNext() (*queuedTask, error) {
 		CrossModalGroundingRequired: taskFile.CrossModalGroundingRequired,
 		AllowTextOnlyFallback:       taskFile.AllowTextOnlyFallback,
 		PreferredExecutor:           strings.TrimSpace(taskFile.PreferredExecutor),
+		PreferredUnitID:             strings.TrimSpace(taskHints.PreferredUnitID),
 		AssetRefs:                   compactStrings(taskFile.AssetRefs),
 		Prompt:                      strings.TrimSpace(taskFile.Prompt),
 	}
