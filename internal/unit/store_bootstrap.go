@@ -18,6 +18,7 @@ type StoreHandle struct {
 }
 
 var openSharedDSNStore = db.Open
+var openEmbeddedPostgresStore = db.OpenEmbeddedPostgres
 
 func OpenStore(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *slog.Logger) (*StoreHandle, error) {
 	if err := spec.Validate(); err != nil {
@@ -49,7 +50,28 @@ func OpenStore(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *sl
 			},
 		}, nil
 	case StoreModeEmbeddedPostgres:
-		return nil, fmt.Errorf("embedded_postgres store mode is declared but not implemented")
+		handle, err := openEmbeddedPostgresStore(ctx, db.EmbeddedPostgresConfig{
+			DataDir:      strings.TrimSpace(cfg.EmbeddedPostgres.DataDir),
+			Port:         cfg.EmbeddedPostgres.Port,
+			User:         strings.TrimSpace(cfg.EmbeddedPostgres.User),
+			DatabaseName: strings.TrimSpace(cfg.EmbeddedPostgres.DatabaseName),
+			BinDir:       strings.TrimSpace(cfg.EmbeddedPostgres.BinDir),
+		})
+		if err != nil {
+			return nil, err
+		}
+		if logger != nil {
+			logger.Info("store bootstrap ready", "unit_id", spec.UnitID, "store_mode", spec.StoreMode, "bootstrap_ref", "embedded_postgres.data_dir")
+		}
+		return &StoreHandle{
+			Pool:         handle.Pool,
+			BootstrapRef: "embedded_postgres.data_dir",
+			Close: func() {
+				if handle.Stop != nil {
+					_ = handle.Stop()
+				}
+			},
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported store mode %q", spec.StoreMode)
 	}

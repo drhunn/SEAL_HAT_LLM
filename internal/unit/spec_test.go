@@ -32,6 +32,23 @@ func TestSpecFromConfigSpecialist(t *testing.T) {
 	}
 }
 
+func TestSpecFromConfigEmbeddedPostgres(t *testing.T) {
+	cfg := &config.AppConfig{}
+	cfg.Runtime.SpecialistID = "csse-tool-development-specialist-01"
+	cfg.Runtime.Namespace = "memory.csse-tool-development-specialist-01"
+	cfg.Runtime.SlotsRoot = "./specialists"
+	cfg.Runtime.ConfigRoot = "./config"
+	cfg.Runtime.StoreMode = "embedded_postgres"
+
+	spec, err := SpecFromConfig(cfg)
+	if err != nil {
+		t.Fatalf("SpecFromConfig returned error: %v", err)
+	}
+	if spec.StoreMode != StoreModeEmbeddedPostgres {
+		t.Fatalf("expected embedded postgres store mode, got %q", spec.StoreMode)
+	}
+}
+
 func TestSpecFromConfigParent(t *testing.T) {
 	cfg := &config.AppConfig{}
 	cfg.Runtime.SpecialistID = executors.ParentGeneralist.String()

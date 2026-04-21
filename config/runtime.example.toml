@@ -11,6 +11,7 @@ specialist_id = "csse-tool-development-specialist-01"
 namespace = "memory.csse-tool-development-specialist-01"
 slots_root = "./specialists"
 config_root = "./config"
+store_mode = "shared_dsn"
 request_timeout_seconds = 30
 default_primary_modality = "text"
 allow_text_only_fallback = true
@@ -18,6 +19,13 @@ enable_multimodal_smoke_test = true
 enable_task_inbox = false
 task_inbox_dir = "./artifacts/task_inbox"
 task_poll_interval_seconds = 5
+
+[embedded_postgres]
+data_dir = "./artifacts/embedded_postgres/csse-tool-development-specialist-01"
+port = 55432
+user = "postgres"
+database_name = "postgres"
+bin_dir = ""
 
 [harness]
 auto_create_postmortems = true

@@ -53,6 +53,11 @@ func SpecFromConfig(cfg *config.AppConfig) (Spec, error) {
 		role = RoleParent
 	}
 
+	storeMode := StoreMode(strings.TrimSpace(cfg.Runtime.StoreMode))
+	if storeMode == "" {
+		storeMode = StoreModeSharedDSN
+	}
+
 	spec := Spec{
 		UnitID:        specialistID,
 		ExecutorName:  specialistID,
@@ -62,7 +67,7 @@ func SpecFromConfig(cfg *config.AppConfig) (Spec, error) {
 		Namespace:     strings.TrimSpace(cfg.Runtime.Namespace),
 		SlotsRoot:     strings.TrimSpace(cfg.Runtime.SlotsRoot),
 		ConfigRoot:    strings.TrimSpace(cfg.Runtime.ConfigRoot),
-		StoreMode:     StoreModeSharedDSN,
+		StoreMode:     storeMode,
 		ToolPlaneMode: ToolPlaneInProcess,
 	}
 	if err := spec.Validate(); err != nil {

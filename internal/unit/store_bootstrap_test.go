@@ -7,11 +7,27 @@ import (
 	"testing"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func storeBootstrapTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func testStoreSpec(mode StoreMode) Spec {
+	return Spec{
+		UnitID:        "csse-tool-development-specialist-01",
+		ExecutorName:  "csse-tool-development-specialist-01",
+		Role:          RoleSpecialist,
+		ModelRef:      "csse-tool-development-specialist-01",
+		SpecialistID:  "csse-tool-development-specialist-01",
+		Namespace:     "memory.csse-tool-development-specialist-01",
+		SlotsRoot:     "./specialists",
+		ConfigRoot:    "./config",
+		StoreMode:     mode,
+		ToolPlaneMode: ToolPlaneInProcess,
+	}
 }
 
 func TestOpenStoreSharedDSNMode(t *testing.T) {
@@ -23,20 +39,8 @@ func TestOpenStoreSharedDSNMode(t *testing.T) {
 
 	cfg := &config.AppConfig{}
 	cfg.Database.DSN = "postgres://example"
-	spec := Spec{
-		UnitID:        "csse-tool-development-specialist-01",
-		ExecutorName:  "csse-tool-development-specialist-01",
-		Role:          RoleSpecialist,
-		ModelRef:      "csse-tool-development-specialist-01",
-		SpecialistID:  "csse-tool-development-specialist-01",
-		Namespace:     "memory.csse-tool-development-specialist-01",
-		SlotsRoot:     "./specialists",
-		ConfigRoot:    "./config",
-		StoreMode:     StoreModeSharedDSN,
-		ToolPlaneMode: ToolPlaneInProcess,
-	}
 
-	handle, err := OpenStore(context.Background(), spec, cfg, storeBootstrapTestLogger())
+	handle, err := OpenStore(context.Background(), testStoreSpec(StoreModeSharedDSN), cfg, storeBootstrapTestLogger())
 	if err != nil {
 		t.Fatalf("OpenStore returned error: %v", err)
 	}
@@ -48,23 +52,27 @@ func TestOpenStoreSharedDSNMode(t *testing.T) {
 	}
 }
 
-func TestOpenStoreEmbeddedModeReturnsExplicitError(t *testing.T) {
-	cfg := &config.AppConfig{}
-	spec := Spec{
-		UnitID:        "csse-tool-development-specialist-01",
-		ExecutorName:  "csse-tool-development-specialist-01",
-		Role:          RoleSpecialist,
-		ModelRef:      "csse-tool-development-specialist-01",
-		SpecialistID:  "csse-tool-development-specialist-01",
-		Namespace:     "memory.csse-tool-development-specialist-01",
-		SlotsRoot:     "./specialists",
-		ConfigRoot:    "./config",
-		StoreMode:     StoreModeEmbeddedPostgres,
-		ToolPlaneMode: ToolPlaneInProcess,
+func TestOpenStoreEmbeddedMode(t *testing.T) {
+	oldOpen := openEmbeddedPostgresStore
+	defer func() { openEmbeddedPostgresStore = oldOpen }()
+	openEmbeddedPostgresStore = func(ctx context.Context, cfg db.EmbeddedPostgresConfig) (*db.EmbeddedPostgresHandle, error) {
+		return &db.EmbeddedPostgresHandle{Pool: &pgxpool.Pool{}, Stop: func() error { return nil }}, nil
 	}
 
-	_, err := OpenStore(context.Background(), spec, cfg, storeBootstrapTestLogger())
-	if err == nil {
-		t.Fatalf("expected embedded postgres bootstrap error")
+	cfg := &config.AppConfig{}
+	cfg.EmbeddedPostgres.DataDir = "./artifacts/embedded_postgres/test"
+	cfg.EmbeddedPostgres.Port = 55432
+	cfg.EmbeddedPostgres.User = "postgres"
+	cfg.EmbeddedPostgres.DatabaseName = "postgres"
+
+	handle, err := OpenStore(context.Background(), testStoreSpec(StoreModeEmbeddedPostgres), cfg, storeBootstrapTestLogger())
+	if err != nil {
+		t.Fatalf("OpenStore returned error: %v", err)
+	}
+	if handle == nil || handle.Pool == nil {
+		t.Fatalf("expected embedded store handle with pool")
+	}
+	if handle.BootstrapRef != "embedded_postgres.data_dir" {
+		t.Fatalf("expected bootstrap ref embedded_postgres.data_dir, got %q", handle.BootstrapRef)
 	}
 }
