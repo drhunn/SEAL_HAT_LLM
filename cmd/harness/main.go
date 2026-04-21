@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 )
 
@@ -29,24 +28,18 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	database, err := db.Open(ctx, cfg.Database.DSN)
-	if err != nil {
-		logger.Error("open database", "err", err)
-		os.Exit(1)
-	}
-	defer database.Close()
-
 	unitSpec, err := unit.SpecFromConfig(cfg)
 	if err != nil {
 		logger.Error("build unit spec", "err", err)
 		os.Exit(1)
 	}
 
-	localRuntime, err := unit.NewLocalRuntime(unitSpec, cfg, database, logger)
+	localRuntime, err := unit.NewBootstrappedLocalRuntime(ctx, unitSpec, cfg, logger)
 	if err != nil {
 		logger.Error("bootstrap local runtime unit", "unit_id", unitSpec.UnitID, "err", err)
 		os.Exit(1)
 	}
+	defer localRuntime.Close()
 
 	logger.Info("starting local model unit",
 		"unit_id", unitSpec.UnitID,
