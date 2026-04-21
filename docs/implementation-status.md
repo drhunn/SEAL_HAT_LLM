@@ -34,7 +34,7 @@ The Go side already has:
   - `shared_dsn` bootstrap support
   - an initial actual `embedded_postgres` bootstrap path using local PostgreSQL binaries
   - a bootstrapped local-runtime constructor now used by the main harness entrypoint
-  - embedded-store ownership locking and idempotent stop behavior for the initial local lifecycle
+  - embedded-store ownership locking, stale-lock reclaim, readiness ping checks, and idempotent stop behavior for the initial local lifecycle
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
@@ -46,7 +46,7 @@ The Go side already has:
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, and embedded-postgres ownership/cleanup behavior
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, and embedded-postgres ownership/readiness/cleanup behavior
 
 ### SQL layer
 The SQL side already has:
@@ -110,7 +110,7 @@ These areas are present in design and partially present in code, but not complet
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
-- embedded Postgres lifecycle management beyond initial bootstrap, ownership locking, and stop behavior
+- embedded Postgres lifecycle management beyond initial bootstrap, ownership locking, stale-lock reclaim, readiness checks, and stop behavior
 
 ## Not implemented yet
 
