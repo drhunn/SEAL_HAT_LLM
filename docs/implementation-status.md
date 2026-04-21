@@ -31,7 +31,8 @@ The Go side already has:
 - `cmd/verify` as a real admission path
 - an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
 - compatibility routing/execution target fields that now carry **unit-target metadata** alongside the existing executor names
-- initial route-episode persistence support for successful startup-task and inbox-task execution paths
+- route-episode persistence support for successful startup-task and inbox-task execution paths
+- failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - initial specialist-artifact persistence support for the current local model unit on startup
 - initial growth staging support that now links ability-growth experiments to the current specialist artifact when available
 
@@ -78,7 +79,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - multimodal-aware planning
 - model-unit bootstrap ownership cleanup without per-unit embedded storage yet
 - compatibility unit-target routing layered on top of executor-name dispatch
-- route-episode persistence on current success paths rather than a fully centralized end-of-task hook
+- route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - specialist-artifact persistence for the current local model unit rather than a full DEN-produced bundle pipeline
 - artifact-linked growth staging that still points at the current startup-persisted artifact rather than a richer lifecycle-managed bundle
 
@@ -91,7 +92,7 @@ These areas are present in design and partially present in code, but not complet
 - durable multimodal execution beyond the current bounded path
 - governed dynamic growth beyond proposal and plan staging
 - deeper sub-agent orchestration
-- failed-task route episode persistence without a deeper hook into the task-processing core
+- a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond initial startup persistence and durable record updates
 
 ## Not implemented yet

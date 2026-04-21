@@ -75,8 +75,10 @@ func (s *Service) Start(ctx context.Context) error {
 }
 
 func (s *Service) runStartupTask(ctx context.Context) error {
-	result, err := s.ProcessTask(ctx, defaultStartupTask(s.cfg))
+	startTask := defaultStartupTask(s.cfg)
+	result, err := s.ProcessTask(ctx, startTask)
 	if err != nil {
+		s.persistFailedRouteEpisode(ctx, startTask, err)
 		return fmt.Errorf("process startup task: %w", err)
 	}
 	s.persistRouteEpisode(ctx, result)
@@ -162,6 +164,7 @@ func (s *Service) processAvailableTasks(ctx context.Context, inbox *TaskInbox) e
 		result, taskErr := s.ProcessTask(taskCtx, queued.Task)
 		cancel()
 		if taskErr != nil {
+			s.persistFailedRouteEpisode(ctx, queued.Task, taskErr)
 			if markErr := inbox.MarkFailed(queued, taskErr); markErr != nil {
 				return fmt.Errorf("mark task as failed: %w", markErr)
 			}
