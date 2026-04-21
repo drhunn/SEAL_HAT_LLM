@@ -29,6 +29,9 @@ The Go side already has:
 - DEN growth-plan generation scaffolding
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
+- an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
+- compatibility routing/execution target fields that now carry **unit-target metadata** alongside the existing executor names
+- initial route-episode persistence support for successful startup-task and inbox-task execution paths
 
 ### SQL layer
 The SQL side already has:
@@ -38,6 +41,7 @@ The SQL side already has:
 - postmortem, eval, and self-edit staging tables
 - multimodal scaffold tables
 - SEAL/DEN tables for signals, proposals, plans, lineage, promotion decisions, and bundle versions
+- a route-episode table for durable routing/execution episode capture
 - seed and verify scripts
 
 ### Python HAT layer
@@ -68,6 +72,9 @@ These paths exist, but they are intentionally small and not yet broad production
 - telemetry-driven proposal generation
 - growth-plan staging
 - multimodal-aware planning
+- model-unit bootstrap ownership cleanup without per-unit embedded storage yet
+- compatibility unit-target routing layered on top of executor-name dispatch
+- route-episode persistence on current success paths rather than a fully centralized end-of-task hook
 
 ## Still scaffolded or partial
 
@@ -78,8 +85,8 @@ These areas are present in design and partially present in code, but not complet
 - durable multimodal execution beyond the current bounded path
 - governed dynamic growth beyond proposal and plan staging
 - deeper sub-agent orchestration
-- route-episode capture for learned parent routing
 - specialist artifact lifecycle beyond names, slot packs, and growth-plan scaffolding
+- failed-task route episode persistence without a deeper hook into the task-processing core
 
 ## Not implemented yet
 
@@ -87,6 +94,7 @@ These are still outside the current runtime:
 - per-model harness runtime units across parent and specialists
 - per-model embedded Postgres deployment
 - explicit cross-model replication or governed sharing between model-local stores
+- routing that targets real model units instead of compatibility-mapped executor names
 - a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
 - production tool broker integration across multiple harnesses
@@ -105,6 +113,7 @@ The repo is most likely to fail when:
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
+- compatibility unit-target mapping is mistaken for real multi-unit orchestration
 
 ## Next milestone
 
@@ -121,7 +130,7 @@ That means:
 6. postmortem and eval writes work
 7. health updates work
 8. strict verify passes cleanly
-9. telemetry, proposal, and growth-plan writes are durable
+9. telemetry, proposal, growth-plan writes are durable
 10. the task inbox is explicit about what it guarantees and what it does not
 
 After that, the repo can make the larger architectural turn toward:

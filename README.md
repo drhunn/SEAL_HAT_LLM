@@ -110,6 +110,7 @@ The script applies:
 5. `sql/verify.sql`
 6. `sql/multimodal-memory.sql`
 7. `sql/20260420_seal_den_growth.sql`
+8. `sql/20260421_route_episodes.sql`
 
 ### 2. Run verification
 - soft local bring-up: `make verify`

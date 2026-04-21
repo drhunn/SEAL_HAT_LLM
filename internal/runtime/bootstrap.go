@@ -78,6 +78,7 @@ func (s *Service) runStartupTask(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("process startup task: %w", err)
 	}
+	s.persistRouteEpisode(ctx, result)
 	if s.growth == nil {
 		return nil
 	}
@@ -165,6 +166,7 @@ func (s *Service) processAvailableTasks(ctx context.Context, inbox *TaskInbox) e
 			}
 			continue
 		}
+		s.persistRouteEpisode(ctx, result)
 		if err := inbox.MarkProcessed(queued, result); err != nil {
 			return fmt.Errorf("mark task as processed: %w", err)
 		}

@@ -9,6 +9,8 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unitref"
 )
 
 type Request struct {
@@ -26,6 +28,9 @@ type Request struct {
 type Plan struct {
 	ExecutionMode        string
 	ChosenExecutor       string
+	TargetUnitID         string
+	TargetRole           unit.Role
+	TargetModelRef       string
 	RequiresFusion       bool
 	UsesTextOnlyFallback bool
 	NeedsParentReview    bool
@@ -48,9 +53,13 @@ func NewService(logger *slog.Logger, hosts *modelhost.Registry) *Service {
 
 func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	selection := executors.Select(req.PrimaryModality, req.SecondaryModalities, req.CrossModalGroundingRequired, req.AllowTextOnlyFallback)
+	target := unitref.ForExecutor(selection.Executor.String())
 	plan := Plan{
 		ExecutionMode:        "unimodal",
 		ChosenExecutor:       selection.Executor.String(),
+		TargetUnitID:         target.UnitID,
+		TargetRole:           target.Role,
+		TargetModelRef:       target.ModelRef,
 		RequiresFusion:       selection.RequiresFusion,
 		UsesTextOnlyFallback: selection.WasFallback,
 		NeedsParentReview:    selection.NeedsParentView,
@@ -58,7 +67,11 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	}
 
 	if req.PreferredExecutor != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
+		preferredTarget := unitref.ForExecutor(req.PreferredExecutor)
 		plan.ChosenExecutor = req.PreferredExecutor
+		plan.TargetUnitID = preferredTarget.UnitID
+		plan.TargetRole = preferredTarget.Role
+		plan.TargetModelRef = preferredTarget.ModelRef
 		plan.Notes = "preferred executor requested"
 	}
 
@@ -74,6 +87,8 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 		"task_class", req.TaskClass,
 		"primary_modality", req.PrimaryModality.String(),
 		"chosen_executor", plan.ChosenExecutor,
+		"target_unit_id", plan.TargetUnitID,
+		"target_role", plan.TargetRole,
 		"execution_mode", plan.ExecutionMode,
 		"requires_fusion", plan.RequiresFusion,
 		"parent_review", plan.NeedsParentReview,
@@ -102,6 +117,7 @@ func (s *Service) Execute(ctx context.Context, req Request) (Result, error) {
 
 	s.logger.InfoContext(ctx, "execution result",
 		"executor", plan.ChosenExecutor,
+		"target_unit_id", plan.TargetUnitID,
 		"host", hostResult.HostName,
 		"handled", hostResult.Handled,
 	)
@@ -115,20 +131,20 @@ func SignalsForExecution(specialistID string, req Request, result Result, execEr
 	}
 	signals := make([]telemetry.Signal, 0)
 	if execErr != nil {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, execErr.Error(), telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, execErr.Error(), telemetry.SeverityHigh, result.Plan.ChosenExecutor, result.Plan.TargetUnitID))
 		return signals
 	}
 	if result.Plan.UsesTextOnlyFallback {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution used text-only fallback", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution used text-only fallback", telemetry.SeverityModerate, result.Plan.ChosenExecutor, result.Plan.TargetUnitID))
 	}
 	if result.Plan.NeedsParentReview {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityModerate, result.Plan.ChosenExecutor, result.Plan.TargetUnitID))
 	}
 	if result.Plan.RequiresFusion && result.Plan.ChosenExecutor != executors.MultimodalFusion.String() {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "multimodal", req.TaskClass, "fusion-required execution was not assigned to fusion executor", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "multimodal", req.TaskClass, "fusion-required execution was not assigned to fusion executor", telemetry.SeverityHigh, result.Plan.ChosenExecutor, result.Plan.TargetUnitID))
 	}
 	if !result.HostResult.Handled {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "host did not handle execution request", telemetry.SeverityHigh, result.HostResult.HostName, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "host did not handle execution request", telemetry.SeverityHigh, result.HostResult.HostName, result.Plan.ChosenExecutor, result.Plan.TargetUnitID))
 	}
 	return signals
 }
