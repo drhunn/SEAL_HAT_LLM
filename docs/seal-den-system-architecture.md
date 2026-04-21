@@ -13,19 +13,20 @@ In this repository:
 
 - the **parent** is a generalist and the long-term routing/orchestration layer
 - **specialists** are explicit derived models for narrower task families, not vague helper personas and not internal MoE shards
+- each model is intended to run as a **model unit** with its own harness and its own embedded Postgres
 - **SEAL** decides **when** the system should adapt and **how** adaptation should be governed
 - **DEN** decides **where** capacity should change and **when** structural expansion is justified because existing capacity is insufficient
-- the **harness** acts as the approving adult and experiment gatekeeper
+- the **harness** acts as the approving adult and experiment gatekeeper for its local model unit
 - **slot governance** defines what is mutable, what is protected, and what requires review
-- **Postgres + pgvector** remain the durable memory, audit, and lineage plane
+- later versions should move tools into a **shared RPC/IPC tool plane** that multiple harnesses can call without sharing memory or authority
 
 This means the system should not jump directly from failure to growth.
 It should move through a governed sequence:
 
 1. observe failure or repeated weakness
-2. stage evidence
+2. stage evidence in the local model unit
 3. let SEAL decide whether adaptation is justified
-4. let the harness and parent approve the adaptation surface
+4. let the local harness and the parent approve the adaptation surface
 5. let DEN choose the smallest structural change that can address the persistent gap
 6. run a bounded experiment
 7. verify, promote, or roll back
@@ -61,6 +62,22 @@ The point is to replace a traditional mixture-of-experts style internal expert a
 - preserve better resolution on that lane than forcing every task through one monolithic generalist
 - remain auditable artifacts with their own lineage, eval history, and rollback path
 
+In the later target architecture, a specialist should be deployed as a **model unit**:
+- specialist model artifact
+- specialist harness
+- specialist embedded Postgres
+- specialist slots and lifecycle state
+
+### harness and slot governance
+The harness enforces execution policy, approval gates, rollback, audit, and promotion rules.
+Slot governance defines what is mutable, what is operational, what is constitutional, and what requires review.
+
+This architecture assumes **one harness per model unit**, not one shared harness for the whole system.
+That means:
+- the parent has a local harness
+- each specialist has a local harness
+- local harnesses govern local execution, local memory writes, local tool permissions, and local postmortem/eval behavior
+
 ### SEAL
 SEAL is the adaptation-decision layer.
 It decides whether the observed evidence justifies change.
@@ -71,34 +88,32 @@ DEN is the structural change mechanism.
 It accepts an approved change problem and determines the smallest structural intervention that can address it.
 DEN should not act on its own without SEAL justification and harness approval.
 
-### harness and slot governance
-The harness enforces execution policy, approval gates, rollback, audit, and promotion rules.
-Slot governance defines what is mutable, what is operational, what is constitutional, and what requires review.
+In the later target architecture, DEN should produce **model-unit bundles**, not just abstract plan rows.
 
 ---
 
 ## architectural split
 
-### 1. execution plane
-The execution plane handles live work:
+### 1. model-unit execution plane
+The execution plane handles live work inside one model unit:
 - task intake
 - slot bundle loading
 - memory retrieval
-- routing
-- execution
+- routing or local execution
 - result generation
 - telemetry emission
+- postmortem/eval staging
 
 This plane should never directly self-modify durable structure.
 It should only emit signals and proposals.
 
 ### 2. parent routing/orchestration plane
-This plane owns runtime coordination.
+This plane owns system coordination.
 It should evolve from explicit policy routing toward a learned orchestration layer.
 
 It answers:
 - should the parent handle this itself?
-- which specialist should receive the task?
+- which specialist model unit should receive the task?
 - is one specialist enough?
 - should retrieval happen before execution?
 - is multimodal fusion required?
@@ -143,6 +158,13 @@ DEN answers:
 - how can the change be rolled back safely?
 
 DEN emits **growth plans** and bounded experiments.
+In the later target architecture, DEN should produce:
+- descendant model artifact
+- harness configuration
+- embedded Postgres bootstrap
+- slot bundle
+- lineage metadata
+- rollback package
 
 ### 5. oversight plane
 The oversight plane owns:
@@ -151,6 +173,7 @@ The oversight plane owns:
 - promotion and rollback decisions
 - policy checks before durable changes
 - audit and lineage updates
+- governed cross-model sharing policy
 
 ### 6. lineage plane
 The lineage plane tracks:
@@ -159,6 +182,17 @@ The lineage plane tracks:
 - split specialists
 - adapters and expert banks
 - retirement, rollback, and pruning history
+- bundle-level refs for harness and embedded-store packaging
+
+### 7. shared tool plane
+Later versions should add a shared **RPC/IPC tool plane** containing reusable external tool executables.
+
+This tool plane is shared capability, not shared authority.
+That means:
+- multiple harnesses may call the same tool executable
+- each local harness still decides whether the tool may be called
+- each local harness still decides whether the result may be trusted or written into local memory
+- tools do not get to bypass local policy just because they are shared
 
 ---
 
@@ -170,9 +204,9 @@ request
   ->
 parent routing/orchestration
   ->
-specialist execution plane
+specialist model unit
   ->
-telemetry + postmortem + eval + routing audit
+local telemetry + postmortem + eval + routing audit
   ->
 SEAL review plane
   ->
@@ -230,13 +264,15 @@ internal/
   runtime/
   slots/
   slotsync/
-
   telemetry/
   seal/
   den/
   oversight/
   lineage/
   evalrun/
+  toolclient/
+  toolregistry/
+  unit/
 ```
 
 ### package responsibilities
@@ -289,6 +325,26 @@ Current state:
   - `den` decides where to expand
   - `growth` executes bounded experiments
 
+#### `internal/toolclient`
+Responsible for typed RPC/IPC calls into shared external tool executables.
+
+Target state:
+- per-call audit metadata
+- timeout/cancellation support
+- explicit error model
+- no direct authority over model-local memory
+
+#### `internal/toolregistry`
+Responsible for shared-tool discovery, contract/version tracking, and local harness authorization surfaces.
+
+#### `internal/unit`
+Responsible for model-unit packaging and startup:
+- model artifact
+- harness config
+- embedded Postgres bootstrap
+- slot bundle refs
+- lifecycle state
+
 ---
 
 ## recommended interfaces
@@ -297,7 +353,7 @@ Current state:
 The parent should eventually produce a structured routing/orchestration decision rather than a raw executor string.
 
 A minimal shape should include:
-- chosen executor or executor set
+- chosen executor or model-unit target
 - confidence
 - fallback flag
 - review flag
@@ -423,6 +479,9 @@ Stores compiled specialist slot bundles and source maps.
 ### `promotion_decisions`
 Stores harness or parent outcomes.
 
+In the later target architecture, these durable records should become **model-unit local by default** rather than assuming one shared runtime database.
+Cross-model summaries or replication should be explicit and governed.
+
 ---
 
 ## runtime integration points
@@ -469,6 +528,11 @@ Current state:
 ### growth
 The existing `growth` package should remain the experiment execution layer while `seal` and `den` own decision-making.
 
+### tool use
+Later versions should route tool use through the shared RPC/IPC plane.
+Tools should not mutate local model-unit memory behind the harness’s back.
+The harness must remain the gatekeeper.
+
 ---
 
 ## approval ladder
@@ -500,6 +564,7 @@ These include:
 - adapter creation
 - expert-bank creation
 - branch creation
+- model-unit bundle creation with local harness/db bootstrap
 
 These should require:
 - SEAL justification
@@ -569,6 +634,15 @@ Deliverables:
 - rollback decisions are recorded
 
 ### milestone 3
+**model-unit packaging and tool-plane separation become real**
+
+Deliverables:
+- parent and specialists run as local model units with their own harnesses and embedded Postgres stores
+- specialist bundles carry model + harness + local-store bootstrap + slots + lineage refs
+- shared tool executables are callable over RPC/IPC by multiple harnesses
+- local harnesses remain the authority boundary for tool use and memory admission
+
+### milestone 4
 **neural growth surfaces become real**
 
 Deliverables:
@@ -591,17 +665,24 @@ The next step is to stabilize and execute the current loop against a migrated da
 - wire oversight and lineage more deeply into the live runtime path
 - define route episodes, routing metrics, and a shadow-mode parent router
 
+After that, the architecture can make the larger turn toward:
+- model units with local harnesses
+- model units with embedded Postgres
+- explicit cross-model sharing
+- a reusable RPC/IPC tool plane
+
 ---
 
 ## summary
 The system architecture should treat:
 - the **parent** as the generalist and long-term learned routing/orchestration layer
 - **specialists** as explicit derived models for narrow recurring task families
+- each model as a **model unit** with local harness and local embedded Postgres
 - **SEAL** as the closed-loop adaptation governor
 - **DEN** as the constrained capacity allocator and expansion mechanism
-- the **harness** as the approving adult
+- the **harness** as the approving adult for each local unit
 - **slot governance** as the hard boundary on mutability and review
-- **Postgres + pgvector** as the durable evidence, memory, and lineage plane
+- the later **tool plane** as shared capability rather than shared authority
 
 The system should not become more capable by accident.
-It should become more capable through governed evidence, bounded experiments, better routing/orchestration, and reversible growth.
+It should become more capable through governed evidence, bounded experiments, better routing/orchestration, reversible growth, and explicit separation between local model units and shared tools.
