@@ -43,17 +43,18 @@ type Result struct {
 }
 
 type Service struct {
-	logger *slog.Logger
-	hosts  *modelhost.Registry
+	logger   *slog.Logger
+	hosts    *modelhost.Registry
+	registry *unit.Registry
 }
 
-func NewService(logger *slog.Logger, hosts *modelhost.Registry) *Service {
-	return &Service{logger: logger, hosts: hosts}
+func NewService(logger *slog.Logger, hosts *modelhost.Registry, registry *unit.Registry) *Service {
+	return &Service{logger: logger, hosts: hosts, registry: registry}
 }
 
 func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	selection := executors.Select(req.PrimaryModality, req.SecondaryModalities, req.CrossModalGroundingRequired, req.AllowTextOnlyFallback)
-	target := unitref.ForExecutor(selection.Executor.String())
+	target := s.resolveTarget(selection.Executor.String())
 	plan := Plan{
 		ExecutionMode:        "unimodal",
 		ChosenExecutor:       selection.Executor.String(),
@@ -67,7 +68,7 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	}
 
 	if req.PreferredExecutor != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
-		preferredTarget := unitref.ForExecutor(req.PreferredExecutor)
+		preferredTarget := s.resolveTarget(req.PreferredExecutor)
 		plan.ChosenExecutor = req.PreferredExecutor
 		plan.TargetUnitID = preferredTarget.UnitID
 		plan.TargetRole = preferredTarget.Role
@@ -95,6 +96,20 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 	)
 
 	return plan
+}
+
+func (s *Service) resolveTarget(executorName string) unitref.Target {
+	if s != nil && s.registry != nil {
+		if spec, ok := s.registry.ResolveExecutor(executorName); ok {
+			return unitref.Target{
+				UnitID:       spec.UnitID,
+				Role:         spec.Role,
+				ModelRef:     spec.ModelRef,
+				ExecutorName: spec.ExecutorName,
+			}
+		}
+	}
+	return unitref.ForExecutor(executorName)
 }
 
 func (s *Service) Execute(ctx context.Context, req Request) (Result, error) {
