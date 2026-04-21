@@ -28,6 +28,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 	task = normalizeTask(task, s.cfg)
 	collector := telemetry.NewCollector(s.logger)
 	signalStore := telemetry.NewMemoryStore()
+	warnings := make([]string, 0)
 
 	retrievalResults, retrievalErr := s.store.RunCoarseToFineSearch(ctx, s.cfg.Runtime.Namespace, s.cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5)
 	if retrievalErr != nil {
@@ -40,6 +41,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		return nil, fmt.Errorf("write retrieval signals to memory store: %w", err)
 	}
 	if err := collector.Write(ctx, s.store, retrievalSignals...); err != nil {
+		warnings = append(warnings, fmt.Sprintf("persist retrieval signals: %v", err))
 		s.logger.Warn("persist retrieval signals failed", "task_id", task.ID, "err", err)
 	}
 
@@ -67,6 +69,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		MultiSpecialistReview: routingDecision.RequiresFusion,
 		Notes:                 "runtime bounded task processing",
 	}); err != nil {
+		warnings = append(warnings, fmt.Sprintf("write routing audit: %v", err))
 		s.logger.Warn("routing audit write failed", "task_id", task.ID, "err", err)
 	}
 	routingSignals := routing.SignalsForDecision(s.cfg.Runtime.SpecialistID, routingInput, routingDecision, collector)
@@ -74,6 +77,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		return nil, fmt.Errorf("write routing signals to memory store: %w", err)
 	}
 	if err := collector.Write(ctx, s.store, routingSignals...); err != nil {
+		warnings = append(warnings, fmt.Sprintf("persist routing signals: %v", err))
 		s.logger.Warn("persist routing signals failed", "task_id", task.ID, "err", err)
 	}
 
@@ -94,10 +98,19 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		return nil, fmt.Errorf("write execution signals to memory store: %w", err)
 	}
 	if err := collector.Write(ctx, s.store, executionSignals...); err != nil {
+		warnings = append(warnings, fmt.Sprintf("persist execution signals: %v", err))
 		s.logger.Warn("persist execution signals failed", "task_id", task.ID, "err", err)
 	}
 
 	allSignals := append(append([]telemetry.Signal{}, retrievalSignals...), append(routingSignals, executionSignals...)...)
+	result := &TaskResult{
+		Task:             task,
+		RetrievalResults: retrievalResults,
+		RoutingDecision:  routingDecision,
+		ExecutionResult:  executionResult,
+		Signals:          allSignals,
+		Warnings:         warnings,
+	}
 	if executionErr != nil {
 		if err := s.handleTaskOutcome(ctx, task, routingDecision, executionResult, executionErr, allSignals); err != nil {
 			return nil, fmt.Errorf("handle task outcome: %w", err)
@@ -119,6 +132,8 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		CreatedBy:       s.cfg.Harness.DefaultCreatedBy,
 	}
 	if err := s.store.PersistMultimodalExecution(ctx, persistInput); err != nil {
+		warnings = append(warnings, fmt.Sprintf("persist execution artifact: %v", err))
+		result.Warnings = warnings
 		s.logger.Warn("persist execution artifact failed", "task_id", task.ID, "err", err)
 	}
 
@@ -133,15 +148,10 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		"chosen_target", routingDecision.ChosenTarget,
 		"executor", executionResult.Plan.ChosenExecutor,
 		"signal_count", len(allSignals),
+		"warning_count", len(warnings),
 	)
 
-	return &TaskResult{
-		Task:             task,
-		RetrievalResults: retrievalResults,
-		RoutingDecision:  routingDecision,
-		ExecutionResult:  executionResult,
-		Signals:          allSignals,
-	}, nil
+	return result, nil
 }
 
 func normalizeTask(task Task, cfg *config.AppConfig) Task {
