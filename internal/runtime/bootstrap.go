@@ -118,6 +118,7 @@ func defaultStartupTask(cfg *config.AppConfig) Task {
 		SecondaryModalities:         []modality.Type{modality.Text},
 		CrossModalGroundingRequired: true,
 		AllowTextOnlyFallback:       cfg.Runtime.AllowTextOnlyFallback,
+		PreferredUnitID:             cfg.Runtime.SpecialistID,
 		AssetRefs:                   []string{"sandbox://startup-smoke/image-1"},
 		Prompt:                      "Compare image evidence with text context.",
 	}, cfg)
