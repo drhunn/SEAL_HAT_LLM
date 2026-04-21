@@ -36,6 +36,7 @@ The Go side already has:
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - initial specialist-artifact persistence support for the current local model unit on startup
 - initial growth staging support that now links ability-growth experiments to the current specialist artifact when available
+- specialist artifact event history support for startup registration and artifact-linked growth staging events
 
 ### SQL layer
 The SQL side already has:
@@ -48,6 +49,7 @@ The SQL side already has:
 - a route-episode table for durable routing/execution episode capture
 - a specialist-artifact table for durable model-unit artifact records
 - an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the current specialist artifact
+- a specialist-artifact-events table for durable artifact lifecycle/event history
 - seed and verify scripts
 
 ### Python HAT layer
@@ -83,6 +85,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - specialist-artifact persistence for the current local model unit rather than a full DEN-produced bundle pipeline
 - artifact-linked growth staging that still points at the current startup-persisted artifact rather than a richer lifecycle-managed bundle
+- artifact lifecycle history through event records rather than real promotion/rollback state transitions
 
 ## Still scaffolded or partial
 
@@ -94,7 +97,7 @@ These areas are present in design and partially present in code, but not complet
 - governed dynamic growth beyond proposal and plan staging
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
-- specialist artifact lifecycle beyond initial startup persistence and durable record updates
+- specialist artifact lifecycle beyond startup persistence, event history, and durable record updates
 
 ## Not implemented yet
 
@@ -112,6 +115,7 @@ These are still outside the current runtime:
 - benchmarked production training workflows
 - full promotion / rollback enforcement for growth experiments
 - DEN-produced model-unit bundles with full artifact packaging
+- real specialist artifact promotion/rollback state transitions instead of event history alone
 
 ## Known weak spots
 
@@ -125,6 +129,7 @@ The repo is most likely to fail when:
 - initial unit-registry resolution is mistaken for real multi-unit orchestration
 - initial specialist-artifact persistence is mistaken for a full specialist lifecycle pipeline
 - artifact-linked growth staging is mistaken for real bundle production or lifecycle promotion
+- artifact event history is mistaken for a full lifecycle state engine
 
 ## Next milestone
 
