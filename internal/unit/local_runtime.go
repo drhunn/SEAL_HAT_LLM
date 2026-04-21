@@ -24,36 +24,43 @@ import (
 )
 
 type LocalRuntime struct {
-	Spec      Spec
-	Registry  *Registry
-	Store     *memory.PostgresStore
-	Harness   *harness.Service
-	Routing   *routing.Service
-	Execution *execution.Service
-	Runtime   *runtime.Service
+	Spec       Spec
+	Registry   *Registry
+	Database   *pgxpool.Pool
+	Store      *memory.PostgresStore
+	Harness    *harness.Service
+	Routing    *routing.Service
+	Execution  *execution.Service
+	Runtime    *runtime.Service
+	closeStore func()
 }
 
-func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, logger *slog.Logger) (*LocalRuntime, error) {
+func NewLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *slog.Logger) (*LocalRuntime, error) {
 	if err := spec.Validate(); err != nil {
 		return nil, err
 	}
 	if cfg == nil {
 		return nil, fmt.Errorf("config is required")
 	}
-	if database == nil {
-		return nil, fmt.Errorf("database pool is required")
-	}
 	if logger == nil {
 		return nil, fmt.Errorf("logger is required")
 	}
 
+	storeHandle, err := OpenStore(ctx, spec, cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	if storeHandle == nil || storeHandle.Pool == nil {
+		return nil, fmt.Errorf("store bootstrap returned no database pool")
+	}
+
 	registry := NewRegistry(BuiltinSpecs(spec)...)
-	store := memory.NewPostgresStore(database, logger)
+	store := memory.NewPostgresStore(storeHandle.Pool, logger)
 	slotLoader := slots.NewFilesystemLoader(spec.SlotsRoot)
 	slotSyncService := slotsync.NewService(slotLoader, logger)
 	pmService := postmortem.NewService(store, logger, cfg.Harness.DefaultCreatedBy)
 	evalService := evals.NewService(store, logger)
-	lifecycleService := lifecycle.NewService(database, logger)
+	lifecycleService := lifecycle.NewService(storeHandle.Pool, logger)
 	growthService := growth.NewService(store, logger)
 	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
 	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
@@ -63,13 +70,15 @@ func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, l
 	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
 
 	return &LocalRuntime{
-		Spec:      spec,
-		Registry:  registry,
-		Store:     store,
-		Harness:   harnessService,
-		Routing:   routingService,
-		Execution: executionService,
-		Runtime:   runtimeService,
+		Spec:       spec,
+		Registry:   registry,
+		Database:   storeHandle.Pool,
+		Store:      store,
+		Harness:    harnessService,
+		Routing:    routingService,
+		Execution:  executionService,
+		Runtime:    runtimeService,
+		closeStore: storeHandle.Close,
 	}, nil
 }
 
@@ -78,6 +87,15 @@ func (u *LocalRuntime) Start(ctx context.Context) error {
 		return fmt.Errorf("local runtime is not initialized")
 	}
 	return u.Runtime.Start(ctx)
+}
+
+func (u *LocalRuntime) Close() {
+	if u == nil {
+		return
+	}
+	if u.closeStore != nil {
+		u.closeStore()
+	}
 }
 
 func hostPrefix(spec Spec) string {
