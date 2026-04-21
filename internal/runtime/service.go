@@ -24,6 +24,7 @@ type Task struct {
 	CrossModalGroundingRequired bool
 	AllowTextOnlyFallback       bool
 	PreferredExecutor           string
+	PreferredUnitID             string
 	AssetRefs                   []string
 	Prompt                      string
 }
@@ -42,6 +43,7 @@ type TaskReview struct {
 	TaskSummary  string
 	Reason       string
 	ChosenTarget string
+	TargetUnitID string
 	Executor     string
 }
 
