@@ -18,6 +18,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
+	rt "github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/seal"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
@@ -155,11 +156,6 @@ func main() {
 		logger.Info("slot bundle persisted", "version_label", versionLabel)
 	}
 
-	collector := telemetry.NewCollector(logger)
-	signalStore := telemetry.NewMemoryStore()
-	proposalStore := &verifyProposalStore{}
-	growthPlanStore := &verifyGrowthPlanStore{}
-
 	if _, err := store.HealthSnapshot(ctx, cfg.Runtime.SpecialistID); err != nil {
 		if fatalErr := handleOptionalFailure(mode, logger, "health snapshot unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
 			os.Exit(1)
@@ -168,87 +164,52 @@ func main() {
 		logger.Info("health snapshot call ok")
 	}
 
-	retrievalResults, retrievalErr := store.RunCoarseToFineSearch(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, memory.ZeroVector(1536), 3, 5, 5)
-	if retrievalErr != nil {
-		if fatalErr := handleOptionalFailure(mode, logger, "retrieval smoke test unavailable", retrievalErr, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
-			os.Exit(1)
-		}
-	} else {
-		logger.Info("retrieval smoke test ok", "result_count", len(retrievalResults))
-	}
-	retrievalSignals := memory.SignalsForRetrieval(cfg.Runtime.SpecialistID, "analysis", retrievalResults, retrievalErr, collector)
-	if err := collector.Write(ctx, signalStore, retrievalSignals...); err != nil {
-		logger.Error("retrieval telemetry memory write failed", "err", err)
-		os.Exit(1)
-	}
-	if err := collector.Write(ctx, store, retrievalSignals...); err != nil {
-		if fatalErr := handleOptionalFailure(mode, logger, "retrieval telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
-			os.Exit(1)
-		}
-	}
-
 	routingService := routing.NewService(logger)
 	hostRegistry := modelhost.NewSimulatedRegistry("verify")
 	executionService := execution.NewService(logger, hostRegistry)
-	growthService := growth.NewService(store, logger)
-	primary := modality.Normalize(cfg.Runtime.DefaultPrimaryModality)
-	routingInput := routing.Input{
-		TaskSummary:     "verify multimodal routing",
-		TaskClass:       "analysis",
-		PrimaryModality: primary,
-	}
-	routingDecision := routingService.DecideTask(ctx, routingInput)
-	logger.Info("routing verify ok",
-		"chosen_target", routingDecision.ChosenTarget,
-		"primary_modality", routingDecision.PrimaryModality,
-	)
-	routingSignals := routing.SignalsForDecision(cfg.Runtime.SpecialistID, routingInput, routingDecision, collector)
-	if err := collector.Write(ctx, signalStore, routingSignals...); err != nil {
-		logger.Error("routing telemetry memory write failed", "err", err)
-		os.Exit(1)
-	}
-	if err := collector.Write(ctx, store, routingSignals...); err != nil {
-		if fatalErr := handleOptionalFailure(mode, logger, "routing telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
-			os.Exit(1)
-		}
-	}
+	taskProcessor := rt.NewService(cfg, nil, store, nil, routingService, executionService, nil, nil, logger)
 
-	var executionResult execution.Result
-	var executionErr error
+	verifyTask := rt.Task{
+		ID:      "verify-task",
+		Summary: "verify bounded runtime task",
+		Class:   "analysis",
+		Prompt:  "Verify runtime task processing.",
+	}
 	if cfg.Runtime.EnableMultimodalSmokeTest {
-		executionReq := execution.Request{
-			TaskSummary:                 "verify multimodal execution",
-			TaskClass:                   "evidence_fusion",
+		verifyTask = rt.Task{
+			ID:                          "verify-task",
+			Summary:                     "verify multimodal execution",
+			Class:                       "evidence_fusion",
 			PrimaryModality:             modality.Image,
-			SecondaryModalities:         []modality.Type{primary},
+			SecondaryModalities:         []modality.Type{modality.Normalize(cfg.Runtime.DefaultPrimaryModality)},
 			CrossModalGroundingRequired: true,
 			AllowTextOnlyFallback:       cfg.Runtime.AllowTextOnlyFallback,
 			AssetRefs:                   []string{"sandbox://verify/image-1"},
 			Prompt:                      "Verify image and text fusion.",
 		}
-		executionResult, executionErr = executionService.Execute(ctx, executionReq)
-		if executionErr != nil {
-			logger.Error("execution verify failed", "err", executionErr)
-			os.Exit(1)
-		}
-		logger.Info("execution verify ok",
-			"executor", executionResult.Plan.ChosenExecutor,
-			"execution_mode", executionResult.Plan.ExecutionMode,
-			"host", executionResult.HostResult.HostName,
-			"handled", executionResult.HostResult.Handled,
-		)
-		executionSignals := execution.SignalsForExecution(cfg.Runtime.SpecialistID, executionReq, executionResult, executionErr, collector)
-		if err := collector.Write(ctx, signalStore, executionSignals...); err != nil {
-			logger.Error("execution telemetry memory write failed", "err", err)
-			os.Exit(1)
-		}
-		if err := collector.Write(ctx, store, executionSignals...); err != nil {
-			if fatalErr := handleOptionalFailure(mode, logger, "execution telemetry persistence unavailable", err, "specialist_id", cfg.Runtime.SpecialistID); fatalErr != nil {
-				os.Exit(1)
-			}
-		}
 	}
 
+	result, err := taskProcessor.ProcessTask(ctx, verifyTask)
+	if err != nil {
+		logger.Error("runtime task verify failed", "err", err)
+		os.Exit(1)
+	}
+	logger.Info("runtime task verify ok",
+		"task_id", result.Task.ID,
+		"executor", result.ExecutionResult.Plan.ChosenExecutor,
+		"execution_mode", result.ExecutionResult.Plan.ExecutionMode,
+		"host", result.ExecutionResult.HostResult.HostName,
+		"signal_count", len(result.Signals),
+	)
+
+	signalStore := telemetry.NewMemoryStore()
+	if err := signalStore.WriteSignals(ctx, result.Signals); err != nil {
+		logger.Error("verify signal store write failed", "err", err)
+		os.Exit(1)
+	}
+
+	proposalStore := &verifyProposalStore{}
+	growthPlanStore := &verifyGrowthPlanStore{}
 	sealService := seal.NewService(signalStore, proposalStore, logger)
 	proposals, err := sealService.ReviewSpecialist(ctx, cfg.Runtime.SpecialistID, 100)
 	if err != nil {
@@ -262,7 +223,7 @@ func main() {
 			}
 		}
 	}
-	logger.Info("seal verify ok", "signal_count", signalStore.Count(), "proposal_count", len(proposals), "persisted_proposal_count", proposalStore.Count())
+	logger.Info("seal verify ok", "signal_count", len(result.Signals), "proposal_count", len(proposals), "persisted_proposal_count", proposalStore.Count())
 
 	if len(proposals) > 0 {
 		denService := den.NewService(growthPlanStore, logger)
@@ -279,10 +240,11 @@ func main() {
 		logger.Info("den verify ok", "proposal_id", proposals[0].ID, "growth_surface", plan.Surface, "growth_plan_count", growthPlanStore.Count())
 	}
 
+	growthService := growth.NewService(store, logger)
 	growthResult, err := growthService.StageExperiment(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, growth.Assessment{
 		AbilityName:       "multimodal_grounding",
 		GapSummary:        "Verify governed ability-growth storage and staging.",
-		EvidenceSummary:   "Verification path confirms current multimodal ability remains scaffold-level.",
+		EvidenceSummary:   fmt.Sprintf("bounded verify task executor=%s host=%s signals=%d", result.ExecutionResult.Plan.ChosenExecutor, result.ExecutionResult.HostResult.HostName, len(result.Signals)),
 		TriedMemoryFix:    true,
 		TriedRoutingFix:   true,
 		TriedPromptFix:    true,
