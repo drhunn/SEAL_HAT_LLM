@@ -33,12 +33,14 @@ def main() -> None:
     runtime.namespace = f"memory.{args.specialist_id}"
 
     slots = trainer.load_slots_from_repo(args.repo_root, args.specialist_id)
+    used_starter_fallback = False
     if not slots.identity.strip():
         if not args.allow_starter_fallback:
             raise SystemExit(
                 "repo specialist slots were not found or are empty; rerun with --allow-starter-fallback only if you intentionally want toy starter data"
             )
         slots = starter_slots()
+        used_starter_fallback = True
 
     tasks = starter_tasks()
     corpus_records = []
@@ -69,7 +71,7 @@ def main() -> None:
         "hf_output": str(hf_path),
         "lora_output": str(lora_path),
         "dataset_dir": str(dataset_dir) if dataset_dir else None,
-        "used_starter_fallback": bool(args.allow_starter_fallback and not trainer.load_slots_from_repo(args.repo_root, args.specialist_id).identity.strip()),
+        "used_starter_fallback": used_starter_fallback,
     }
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
 
