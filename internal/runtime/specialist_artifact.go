@@ -16,7 +16,7 @@ func (s *Service) persistSpecialistArtifact(ctx context.Context, slotBundleRef, 
 	if s.cfg.Runtime.SpecialistID == executors.ParentGeneralist.String() {
 		role = string(unit.RoleParent)
 	}
-	_, err := s.store.UpsertSpecialistArtifact(ctx, memory.SpecialistArtifactInput{
+	artifactID, err := s.store.UpsertSpecialistArtifact(ctx, memory.SpecialistArtifactInput{
 		SpecialistID:      s.cfg.Runtime.SpecialistID,
 		UnitID:            s.cfg.Runtime.SpecialistID,
 		Role:              role,
@@ -31,5 +31,19 @@ func (s *Service) persistSpecialistArtifact(ctx context.Context, slotBundleRef, 
 	})
 	if err != nil {
 		s.logger.Warn("specialist artifact persistence failed", "specialist_id", s.cfg.Runtime.SpecialistID, "err", err)
+		return
+	}
+	if _, err := s.store.CreateSpecialistArtifactEvent(ctx, memory.SpecialistArtifactEventInput{
+		ArtifactID:   artifactID,
+		SpecialistID: s.cfg.Runtime.SpecialistID,
+		EventType:    "registered",
+		Actor:        s.cfg.Harness.DefaultCreatedBy,
+		Reason:       "runtime startup registered current local model unit artifact",
+		MetadataJSON: map[string]interface{}{
+			"slot_bundle_ref":   slotBundleRef,
+			"slot_version_hash": slotVersionHash,
+		},
+	}); err != nil {
+		s.logger.Warn("specialist artifact event persistence failed", "specialist_id", s.cfg.Runtime.SpecialistID, "err", err)
 	}
 }
