@@ -10,7 +10,7 @@ run:
 	go run ./cmd/harness -config config/runtime.example.toml
 
 bootstrap-db:
-	./scripts/bootstrap_verify_db.sh '$(DB_DSN)'
+	bash ./scripts/bootstrap_verify_db.sh '$(DB_DSN)'
 
 verify: verify-soft
 
