@@ -30,8 +30,11 @@ type EmbeddedPostgresHandle struct {
 
 var commandContext = exec.CommandContext
 var openPool = Open
+var pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return pool.Ping(ctx) }
 var runEmbeddedCommand = runCommand
 var embeddedPostgresStatus = postgresRunning
+var embeddedPostgresNow = func() time.Time { return time.Now().UTC() }
+var embeddedPostgresStaleLockAge = 2 * time.Minute
 
 func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*EmbeddedPostgresHandle, error) {
 	dataDir := strings.TrimSpace(cfg.DataDir)
@@ -53,7 +56,9 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 		return nil, fmt.Errorf("create embedded postgres data dir: %w", err)
 	}
 
-	releaseOwnership, err := acquireEmbeddedPostgresOwnership(dataDir)
+	initdbPath := binaryPath(cfg.BinDir, "initdb")
+	pgCtlPath := binaryPath(cfg.BinDir, "pg_ctl")
+	releaseOwnership, err := acquireEmbeddedPostgresOwnership(ctx, dataDir, pgCtlPath)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +69,6 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 		}
 	}()
 
-	initdbPath := binaryPath(cfg.BinDir, "initdb")
-	pgCtlPath := binaryPath(cfg.BinDir, "pg_ctl")
 	initialized := fileExists(filepath.Join(dataDir, "PG_VERSION"))
 	if !initialized {
 		if err := runEmbeddedCommand(ctx, initdbPath, "-D", dataDir, "-U", user, "-A", "trust"); err != nil {
@@ -88,6 +91,19 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 		}
 		return nil, fmt.Errorf("open embedded postgres pool: %w", err)
+	}
+	if pool == nil {
+		if startedHere {
+			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+		}
+		return nil, fmt.Errorf("open embedded postgres pool returned nil pool")
+	}
+	if err := pingPool(ctx, pool); err != nil {
+		pool.Close()
+		if startedHere {
+			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+		}
+		return nil, fmt.Errorf("ping embedded postgres pool: %w", err)
 	}
 
 	var stopOnce sync.Once
@@ -114,31 +130,80 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 	return &EmbeddedPostgresHandle{Pool: pool, DSN: dsn, Stop: stop}, nil
 }
 
-func acquireEmbeddedPostgresOwnership(dataDir string) (func() error, error) {
+func acquireEmbeddedPostgresOwnership(ctx context.Context, dataDir, pgCtlPath string) (func() error, error) {
 	lockPath := filepath.Join(dataDir, ".embedded_postgres.lock")
-	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		if os.IsExist(err) {
+	for attempts := 0; attempts < 2; attempts++ {
+		lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			metadata := fmt.Sprintf("pid=%d\ncreated_at=%s\n", os.Getpid(), embeddedPostgresNow().Format(time.RFC3339Nano))
+			if _, err := lockFile.WriteString(metadata); err != nil {
+				_ = lockFile.Close()
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("write embedded postgres lock: %w", err)
+			}
+			if err := lockFile.Close(); err != nil {
+				_ = os.Remove(lockPath)
+				return nil, fmt.Errorf("close embedded postgres lock: %w", err)
+			}
+			return func() error {
+				if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
+					return fmt.Errorf("remove embedded postgres lock: %w", err)
+				}
+				return nil
+			}, nil
+		}
+		if !os.IsExist(err) {
+			return nil, fmt.Errorf("create embedded postgres lock: %w", err)
+		}
+		reclaimed, reclaimErr := reclaimStaleEmbeddedPostgresLock(ctx, lockPath, pgCtlPath, dataDir)
+		if reclaimErr != nil {
+			return nil, reclaimErr
+		}
+		if !reclaimed {
 			return nil, fmt.Errorf("embedded postgres data dir %q is already in use", dataDir)
 		}
-		return nil, fmt.Errorf("create embedded postgres lock: %w", err)
 	}
-	metadata := fmt.Sprintf("pid=%d\ncreated_at=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
-	if _, err := lockFile.WriteString(metadata); err != nil {
-		_ = lockFile.Close()
-		_ = os.Remove(lockPath)
-		return nil, fmt.Errorf("write embedded postgres lock: %w", err)
+	return nil, fmt.Errorf("embedded postgres data dir %q is already in use", dataDir)
+}
+
+func reclaimStaleEmbeddedPostgresLock(ctx context.Context, lockPath, pgCtlPath, dataDir string) (bool, error) {
+	if embeddedPostgresStatus(ctx, pgCtlPath, dataDir) {
+		return false, nil
 	}
-	if err := lockFile.Close(); err != nil {
-		_ = os.Remove(lockPath)
-		return nil, fmt.Errorf("close embedded postgres lock: %w", err)
-	}
-	return func() error {
-		if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("remove embedded postgres lock: %w", err)
+	lockData, err := os.ReadFile(lockPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return true, nil
 		}
-		return nil
-	}, nil
+		return false, fmt.Errorf("read embedded postgres lock: %w", err)
+	}
+	createdAt, ok := parseEmbeddedPostgresLockCreatedAt(string(lockData))
+	if !ok {
+		return false, nil
+	}
+	if embeddedPostgresNow().Sub(createdAt) < embeddedPostgresStaleLockAge {
+		return false, nil
+	}
+	if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
+		return false, fmt.Errorf("remove stale embedded postgres lock: %w", err)
+	}
+	return true, nil
+}
+
+func parseEmbeddedPostgresLockCreatedAt(lockData string) (time.Time, bool) {
+	for _, line := range strings.Split(lockData, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "created_at=") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(line, "created_at="))
+		createdAt, err := time.Parse(time.RFC3339Nano, value)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return createdAt, true
+	}
+	return time.Time{}, false
 }
 
 func runCommand(ctx context.Context, name string, args ...string) error {
