@@ -3,8 +3,8 @@ package routing
 import (
 	"context"
 	"log/slog"
-	"strings"
 
+	"github.com/drhunn/SEAL_HAT_LLM/internal/executors"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
@@ -51,42 +51,17 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		primary = modality.Text
 	}
 
+	selection := executors.Select(primary, in.SecondaryModalities, in.CrossModalGroundingRequired, true)
 	decision := Decision{
 		TaskSummary:     in.TaskSummary,
 		TaskClass:       in.TaskClass,
-		ChosenTarget:    "Parent-Generalist-30B",
-		Confidence:      0.50,
+		ChosenTarget:    selection.Executor.String(),
+		Confidence:      selection.Confidence,
+		WasFallback:     selection.WasFallback,
+		FallbackReason:  selection.FallbackReason,
+		NeedsParentView: selection.NeedsParentView,
 		PrimaryModality: primary.String(),
-	}
-
-	if in.CrossModalGroundingRequired || len(in.SecondaryModalities) > 0 || primary == modality.Multimodal {
-		decision.ChosenTarget = "Multimodal-Evidence-Fusion-Specialist-01"
-		decision.Confidence = 0.78
-		decision.RequiresFusion = true
-		decision.NeedsParentView = true
-	} else {
-		switch primary {
-		case modality.Image:
-			decision.ChosenTarget = "Image-Analysis-Specialist-01"
-			decision.Confidence = 0.74
-		case modality.Audio:
-			decision.ChosenTarget = "Audio-Transcription-Specialist-01"
-			decision.Confidence = 0.74
-		case modality.Video:
-			decision.ChosenTarget = "Video-Understanding-Specialist-01"
-			decision.Confidence = 0.76
-		case modality.Document:
-			decision.ChosenTarget = "Document-Layout-OCR-Specialist-01"
-			decision.Confidence = 0.72
-		case modality.Text:
-			decision.ChosenTarget = "Parent-Generalist-30B"
-			decision.Confidence = 0.50
-		default:
-			decision.ChosenTarget = "Parent-Generalist-30B"
-			decision.Confidence = 0.45
-			decision.WasFallback = true
-			decision.FallbackReason = "unknown modality defaulted to parent"
-		}
+		RequiresFusion:  selection.RequiresFusion,
 	}
 
 	s.logger.InfoContext(ctx, "routing decision",
@@ -113,7 +88,7 @@ func SignalsForDecision(specialistID string, in Input, decision Decision, collec
 	if decision.Confidence < 0.55 {
 		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "low-confidence routing decision", telemetry.SeverityLow, decision.ChosenTarget))
 	}
-	if decision.RequiresFusion && !strings.Contains(decision.ChosenTarget, "Fusion") {
+	if decision.RequiresFusion && decision.ChosenTarget != executors.MultimodalFusion.String() {
 		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "fusion-required task was not routed to fusion executor", telemetry.SeverityHigh, decision.ChosenTarget))
 	}
 	return signals
@@ -121,7 +96,7 @@ func SignalsForDecision(specialistID string, in Input, decision Decision, collec
 
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
-		if strings.TrimSpace(value) != "" {
+		if value != "" {
 			return value
 		}
 	}
