@@ -111,6 +111,7 @@ The script applies:
 6. `sql/multimodal-memory.sql`
 7. `sql/20260420_seal_den_growth.sql`
 8. `sql/20260421_route_episodes.sql`
+9. `sql/20260421_specialist_artifacts.sql`
 
 ### 2. Run verification
 - soft local bring-up: `make verify`
