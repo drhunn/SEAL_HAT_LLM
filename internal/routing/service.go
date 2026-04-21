@@ -18,15 +18,15 @@ type Input struct {
 }
 
 type Decision struct {
-	TaskSummary      string
-	TaskClass        string
-	ChosenTarget     string
-	Confidence       float64
-	WasFallback      bool
-	FallbackReason   string
-	NeedsParentView  bool
-	PrimaryModality  string
-	RequiresFusion   bool
+	TaskSummary     string
+	TaskClass       string
+	ChosenTarget    string
+	Confidence      float64
+	WasFallback     bool
+	FallbackReason  string
+	NeedsParentView bool
+	PrimaryModality string
+	RequiresFusion  bool
 }
 
 type Service struct {
@@ -108,7 +108,7 @@ func SignalsForDecision(specialistID string, in Input, decision Decision, collec
 		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, firstNonEmpty(decision.FallbackReason, "routing fallback used"), telemetry.SeverityModerate, decision.ChosenTarget))
 	}
 	if decision.NeedsParentView {
-		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "routing requested parent review", telemetry.SeverityHigh, decision.ChosenTarget))
+		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "routing requested parent review", telemetry.SeverityModerate, decision.ChosenTarget))
 	}
 	if decision.Confidence < 0.55 {
 		signals = append(signals, collector.NewSignal(specialistID, "routing", "routing", in.TaskClass, "low-confidence routing decision", telemetry.SeverityLow, decision.ChosenTarget))
