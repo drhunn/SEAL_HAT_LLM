@@ -1,12 +1,16 @@
 APP_NAME := harness
+DB_DSN ?= postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable
 
-.PHONY: build run verify verify-soft verify-strict check fmt tidy test pycheck pytest
+.PHONY: build run verify verify-soft verify-strict bootstrap-db check fmt tidy test pycheck pytest
 
 build:
 	go build ./...
 
 run:
 	go run ./cmd/harness -config config/runtime.example.toml
+
+bootstrap-db:
+	bash ./scripts/bootstrap_verify_db.sh '$(DB_DSN)'
 
 verify: verify-soft
 

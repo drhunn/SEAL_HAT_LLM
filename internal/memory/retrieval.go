@@ -21,23 +21,41 @@ type RetrievalResult struct {
 	FinalScore    float64
 }
 
-func EncodeVector(values []float32) string {
+type VectorLiteral string
+
+func (v VectorLiteral) String() string {
+	return string(v)
+}
+
+func NewVectorLiteral(values []float32) VectorLiteral {
 	parts := make([]string, 0, len(values))
 	for _, v := range values {
 		parts = append(parts, strconv.FormatFloat(float64(v), 'f', -1, 32))
 	}
-	return "[" + strings.Join(parts, ",") + "]"
+	return VectorLiteral("[" + strings.Join(parts, ",") + "]")
 }
 
-func ZeroVector(dim int) string {
+func ZeroVectorLiteral(dim int) VectorLiteral {
 	parts := make([]string, dim)
 	for i := range parts {
 		parts[i] = "0"
 	}
-	return "[" + strings.Join(parts, ",") + "]"
+	return VectorLiteral("[" + strings.Join(parts, ",") + "]")
+}
+
+func EncodeVector(values []float32) string {
+	return NewVectorLiteral(values).String()
+}
+
+func ZeroVector(dim int) string {
+	return ZeroVectorLiteral(dim).String()
 }
 
 func (s *PostgresStore) RunCoarseToFineSearch(ctx context.Context, namespace, specialistID, vectorLiteral string, topRegions, topClusters, topRecords int) ([]RetrievalResult, error) {
+	return s.RunCoarseToFineSearchVector(ctx, namespace, specialistID, VectorLiteral(vectorLiteral), topRegions, topClusters, topRecords)
+}
+
+func (s *PostgresStore) RunCoarseToFineSearchVector(ctx context.Context, namespace, specialistID string, vectorLiteral VectorLiteral, topRegions, topClusters, topRecords int) ([]RetrievalResult, error) {
 	const q = `
 		SELECT
 			record_id::text,
@@ -58,7 +76,7 @@ func (s *PostgresStore) RunCoarseToFineSearch(ctx context.Context, namespace, sp
 			$6
 		)`
 
-	rows, err := s.db.Query(ctx, q, namespace, specialistID, vectorLiteral, topRegions, topClusters, topRecords)
+	rows, err := s.db.Query(ctx, q, namespace, specialistID, vectorLiteral.String(), topRegions, topClusters, topRecords)
 	if err != nil {
 		return nil, fmt.Errorf("run coarse-to-fine search: %w", err)
 	}

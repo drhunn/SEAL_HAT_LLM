@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--specialist-id", default="csse-tool-development-specialist-01", help="specialist id to load")
     parser.add_argument("--dsn", default="", help="optional Postgres DSN for loading postmortems/evals")
     parser.add_argument("--add-governance-negatives", action="store_true", help="include governance-pressure negative examples")
+    parser.add_argument("--allow-starter-fallback", action="store_true", help="allow starter slot fallback when repo slots are missing")
     parser.add_argument("--hf-out", default="artifacts/hf_dataset.json", help="output JSON path for HF-style records")
     parser.add_argument("--lora-out", default="artifacts/lora_sft.jsonl", help="output JSONL path for LoRA-style messages")
     parser.add_argument("--dataset-dir", default="", help="optional path to save a direct datasets.DatasetDict export")
@@ -32,8 +33,14 @@ def main() -> None:
     runtime.namespace = f"memory.{args.specialist_id}"
 
     slots = trainer.load_slots_from_repo(args.repo_root, args.specialist_id)
+    used_starter_fallback = False
     if not slots.identity.strip():
+        if not args.allow_starter_fallback:
+            raise SystemExit(
+                "repo specialist slots were not found or are empty; rerun with --allow-starter-fallback only if you intentionally want toy starter data"
+            )
         slots = starter_slots()
+        used_starter_fallback = True
 
     tasks = starter_tasks()
     corpus_records = []
@@ -46,7 +53,6 @@ def main() -> None:
         tasks.extend(trainer.governance_pressure_tasks(corpus_records))
 
     examples, reports = trainer.build_training_examples(runtime, slots, tasks)
-    # One more export format should fix it.
     out_path = DatasetBuilder().export_jsonl(examples, args.output)
 
     splits = split_examples(examples)
@@ -65,6 +71,7 @@ def main() -> None:
         "hf_output": str(hf_path),
         "lora_output": str(lora_path),
         "dataset_dir": str(dataset_dir) if dataset_dir else None,
+        "used_starter_fallback": used_starter_fallback,
     }
     report_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
 

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/drhunn/SEAL_HAT_LLM/internal/executors"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 )
 
@@ -21,7 +22,7 @@ func TestDecideTaskRoutesImageWorkToImageSpecialist(t *testing.T) {
 		PrimaryModality: modality.Image,
 	})
 
-	if got, want := decision.ChosenTarget, "Image-Analysis-Specialist-01"; got != want {
+	if got, want := decision.ChosenTarget, executors.ImageAnalysis.String(); got != want {
 		t.Fatalf("chosen target = %q, want %q", got, want)
 	}
 }
@@ -39,7 +40,7 @@ func TestDecideTaskRoutesCrossModalRequestsToFusion(t *testing.T) {
 	if !decision.RequiresFusion {
 		t.Fatalf("expected fusion routing")
 	}
-	if got, want := decision.ChosenTarget, "Multimodal-Evidence-Fusion-Specialist-01"; got != want {
+	if got, want := decision.ChosenTarget, executors.MultimodalFusion.String(); got != want {
 		t.Fatalf("chosen target = %q, want %q", got, want)
 	}
 }
