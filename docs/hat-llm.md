@@ -83,7 +83,7 @@ Training scaffold:
 
 ## Example usage
 
-Build starter data from repo slots:
+Build from real repo slots:
 - `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01`
 
 Build with Postgres-backed postmortems and eval cases:
@@ -91,6 +91,11 @@ Build with Postgres-backed postmortems and eval cases:
 
 Build with governance-pressure negatives and `DatasetDict` output:
 - `hat-llm --repo-root . --specialist-id csse-tool-development-specialist-01 --dsn postgres://user:pass@localhost:5432/llm_harness --add-governance-negatives --dataset-dir artifacts/hat_dataset`
+
+Use starter toy data only when you explicitly mean to:
+- `hat-llm --repo-root . --specialist-id missing-specialist --allow-starter-fallback`
+
+Without `--allow-starter-fallback`, the dataset builder now fails fast when the requested repo slot pack is missing or empty.
 
 ## What it does not do yet
 
