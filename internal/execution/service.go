@@ -21,6 +21,7 @@ type Request struct {
 	CrossModalGroundingRequired bool
 	AllowTextOnlyFallback       bool
 	PreferredExecutor           string
+	PreferredUnitID             string
 	AssetRefs                   []string
 	Prompt                      string
 }
@@ -67,9 +68,18 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 		Notes:                notesForSelection(selection.Executor, selection.RequiresFusion, selection.WasFallback),
 	}
 
-	if req.PreferredExecutor != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
+	if req.PreferredUnitID != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
+		preferredTarget, ok := s.resolveUnitTarget(req.PreferredUnitID)
+		if ok {
+			plan.ChosenExecutor = preferredTarget.ExecutorName
+			plan.TargetUnitID = preferredTarget.UnitID
+			plan.TargetRole = preferredTarget.Role
+			plan.TargetModelRef = preferredTarget.ModelRef
+			plan.Notes = "preferred unit requested"
+		}
+	} else if req.PreferredExecutor != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
 		preferredTarget := s.resolveTarget(req.PreferredExecutor)
-		plan.ChosenExecutor = req.PreferredExecutor
+		plan.ChosenExecutor = preferredTarget.ExecutorName
 		plan.TargetUnitID = preferredTarget.UnitID
 		plan.TargetRole = preferredTarget.Role
 		plan.TargetModelRef = preferredTarget.ModelRef
@@ -110,6 +120,20 @@ func (s *Service) resolveTarget(executorName string) unitref.Target {
 		}
 	}
 	return unitref.ForExecutor(executorName)
+}
+
+func (s *Service) resolveUnitTarget(unitID string) (unitref.Target, bool) {
+	if s != nil && s.registry != nil {
+		if spec, ok := s.registry.ResolveUnit(unitID); ok {
+			return unitref.Target{
+				UnitID:       spec.UnitID,
+				Role:         spec.Role,
+				ModelRef:     spec.ModelRef,
+				ExecutorName: spec.ExecutorName,
+			}, true
+		}
+	}
+	return unitref.Target{}, false
 }
 
 func (s *Service) Execute(ctx context.Context, req Request) (Result, error) {
