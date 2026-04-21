@@ -1,150 +1,138 @@
-# LIKELY BREAKPOINTS
+# Likely breakpoints
 
-## purpose
-Record the areas most likely to break as `SEAL_HAT_LLM` evolves.
-
----
+This file records where SEAL_HAT_LLM is most likely to break as the repo evolves.
 
 ## 1. Go runtime ↔ SQL function drift
-The Go runtime already expects more from the SQL layer than the earliest scaffold provided.
-Typical breakpoints:
-- missing helper functions
-- changed function signatures
-- changed return columns
-- changed enum names or status values
 
-### mitigation
-- update `docs/sql-contracts.md` whenever SQL functions change
-- run `cmd/verify` after SQL changes
-- keep retrieval return shapes synchronized
+Failure mode:
+- Go expects function names, arguments, or return columns that no longer match the database.
 
----
+What breaks:
+- retrieval
+- health updates
+- summary projection
+- verify
+
+Guardrail:
+- update `docs/sql-contracts.md` whenever a runtime-facing SQL function changes
+- run strict verify after SQL changes
 
 ## 2. Go runtime ↔ SQL schema drift
-Likely failure modes:
-- Go writes columns that do not exist yet
-- Go expects tables that were never created or renamed
-- lifecycle writes assume richer schema than the DB currently has
-- SEAL/DEN persistence paths exist in Go, but the migration was never applied in the target DB
 
-### mitigation
-- treat schema/runtime reconciliation as a tracked task
-- prefer explicit migrations over silent schema edits
-- add new migrations to the documented bootstrap order
+Failure mode:
+- Go writes columns or tables that do not exist in the target database.
+- Migrations exist in the repo, but were never applied where the runtime is pointed.
 
----
+What breaks:
+- bundle persistence
+- telemetry writes
+- proposal / growth-plan writes
+- lifecycle writes
 
-## 3. schema namespace drift
-The repository now has more write paths and a new SEAL/DEN migration.
-If later schema files stop using the `agent_core` convention consistently, the runtime can appear to work while writing into the wrong place.
+Guardrail:
+- treat migrations as admission-critical
+- avoid silent schema edits
+- keep bootstrap order explicit
 
-### mitigation
+## 3. Namespace drift
+
+Failure mode:
+- new SQL files stop using `agent_core` consistently.
+
+What breaks:
+- the runtime appears to work locally but writes to the wrong schema or reads from the wrong place.
+
+Guardrail:
 - keep `agent_core` as the canonical runtime schema
-- set or qualify schema names consistently in migrations
-- verify new tables are created where the Go runtime expects them
+- qualify names or set `search_path` consistently
 
----
+## 4. Identifier drift
 
-## 4. identifier format drift
-The SEAL/DEN scaffolding currently uses text-style IDs in Go and SQL.
-If a later migration or runtime path silently switches to generated UUIDs without updating the other side, proposal, growth-plan, or bundle persistence can fail in confusing ways.
+Failure mode:
+- one side assumes text IDs while the other side silently switches to DB-generated UUIDs or a different text format.
 
-### mitigation
-- document identifier shape explicitly in SQL and Go
-- keep reconciliation docs updated when identifier strategy changes
-- avoid changing ID strategy casually once persistence has begun
+What breaks:
+- proposal, growth-plan, lineage, and bundle persistence
 
----
+Guardrail:
+- keep identifier strategy documented and stable
+- change it only with coordinated Go + SQL updates
 
-## 5. rename drift after repo rename
-The repository has been renamed to `SEAL_HAT_LLM`, but name drift can still occur across:
-- docs
-- Go module path
-- package comments
-- old commit messages and preserved markdown code references
+## 5. Duplicated policy drift
 
-### mitigation
-- keep repo/module/doc naming explicit
-- allow Python package naming to stay stable only if that is intentional and documented
+Failure mode:
+- routing and execution packages encode overlapping policy in separate places.
 
----
+What breaks:
+- the system routes to one executor and plans for another
+- verify becomes noisy for the wrong reason
 
-## 6. architecture docs ahead of implementation
-The docs are detailed and useful, but they are broader than the live runtime.
+Guardrail:
+- keep one source of truth for task-to-executor policy
 
-### mitigation
-- use `docs/implementation-status.md` as the reality check
-- do not assume a documented workflow is already enforced in code
+## 6. Docs ahead of code
 
----
+Failure mode:
+- architecture notes are read as if they describe a completed runtime.
 
-## 7. preserved `.md` code versus live code confusion
-Some code is preserved as `.md` due to in-session connector limitations.
+What breaks:
+- planning quality
+- review quality
+- roadmap discipline
 
-### mitigation
-- always leave a note in the folder
-- state whether the `.md` file is archival or canonical
-- keep one executable entrypoint only
+Guardrail:
+- use `implementation-status.md` as the reality anchor
+- do not advertise architecture as completed behavior
 
----
+## 7. Preserved `.md` code ambiguity
 
-## 8. retrieval scoring contract drift
-The retrieval wrapper and SQL function must agree on result shape and score semantics.
+Failure mode:
+- archived or preserved `.md` code is mistaken for a live entrypoint.
 
-### mitigation
-- keep retrieval smoke tests in `cmd/verify`
-- document return columns in `docs/sql-contracts.md`
+What breaks:
+- maintenance
+- debugging
+- onboarding
 
----
+Guardrail:
+- label preserved code clearly
+- keep one canonical executable path
 
-## 9. health and lifecycle semantics drift
-Health score logic, degraded rules, and lifecycle transitions may drift between docs, Go code, and SQL helpers.
+## 8. Verify false confidence
 
-### mitigation
-- make health update formulas explicit
-- define allowed transitions clearly
-- audit lifecycle writes
+Failure mode:
+- soft verify is treated like a real gate, or strict verify becomes too broad to diagnose cleanly.
 
----
+What breaks:
+- admission quality
+- debugging speed
+- trust in CI
 
-## 10. training/data format proliferation
-The Python HAT layer can emit multiple formats.
-That is useful, but it increases the risk of ambiguity about which format is canonical.
+Guardrail:
+- use strict verify in CI
+- keep verify narrow enough that failures are interpretable
 
-### mitigation
-- keep `build_dataset.py` as the canonical dataset-building entrypoint
-- document output purposes clearly
+## 9. First-specialist scope creep
 
----
+Failure mode:
+- the first specialist becomes a dumping ground for every technical task in the repo.
 
-## 11. CI false confidence
-Basic CI is helpful, but passing import/build checks does not mean the runtime is truly integrated.
-This is especially true when soft verify behavior is mistaken for a hard gate.
+What breaks:
+- lane clarity
+- future specialist design
+- governance boundaries
 
-### mitigation
-- treat CI as a floor, not a proof of completeness
-- keep DB-backed smoke coverage in CI through `cmd/verify -mode strict`
-- reserve `cmd/verify -mode soft` for staged local bring-up and reconciliation work
-- distinguish soft-fallback verify behavior from a fully migrated runtime
-
----
-
-## 12. first-specialist scope creep
-The first specialist is correctly focused on CS/software engineering and tool development, but it could gradually become too broad.
-
-### mitigation
+Guardrail:
 - keep lane boundaries explicit
-- do not use the first specialist as a dumping ground for everything technical
+- split responsibilities only when the codebase earns it
 
----
+## Summary
 
-## summary
-If the repo breaks, the most likely causes are:
+If this repo breaks, the most likely causes are still boring ones:
 - schema/runtime mismatch
 - migration drift
-- function contract drift
-- identifier drift
-- naming drift
-- docs outrunning implementation
-- preserved-code ambiguity
-- soft verify being mistaken for a real gate
+- policy duplication
+- docs outrunning code
+- soft checks being mistaken for real gates
+
+That is where review energy should go first.
