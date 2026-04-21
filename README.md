@@ -114,6 +114,7 @@ The script applies:
 9. `sql/20260421_specialist_artifacts.sql`
 10. `sql/20260421_ability_growth_artifact_refs.sql`
 11. `sql/20260421_specialist_artifact_events.sql`
+12. `sql/20260421_candidate_artifact_lifecycle.sql`
 
 ### 2. Run verification
 - soft local bring-up: `make verify`

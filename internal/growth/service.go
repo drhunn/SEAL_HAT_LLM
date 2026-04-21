@@ -70,12 +70,30 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 		return nil, err
 	}
 
-	specialistArtifactID := ""
-	artifactID, err := s.store.GetSpecialistArtifactID(ctx, specialistID, specialistID)
+	parentArtifactID := ""
+	artifactID, err := s.store.GetCurrentSpecialistArtifactID(ctx, specialistID)
 	if err != nil {
-		s.logger.Warn("specialist artifact lookup failed during growth staging", "specialist_id", specialistID, "err", err)
+		s.logger.Warn("current specialist artifact lookup failed during growth staging", "specialist_id", specialistID, "err", err)
 	} else {
-		specialistArtifactID = artifactID
+		parentArtifactID = artifactID
+	}
+
+	candidateArtifactID, err := s.store.CreateCandidateSpecialistArtifact(ctx, memory.CandidateSpecialistArtifactInput{
+		SpecialistID:      specialistID,
+		ParentArtifactID:  parentArtifactID,
+		AbilityName:       in.AbilityName,
+		RequestedBy:       defaultActor(in.RequestedBy),
+		ModelRef:          specialistID,
+		HarnessConfigRef:  "",
+		StoreMode:         "shared_dsn",
+		StoreBootstrapRef: "database.dsn",
+		SlotBundleRef:     "",
+		SlotVersionHash:   "",
+		EvalSuiteRef:      "",
+		Notes:             in.Notes,
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	experimentID, err := s.store.CreateAbilityGrowthExperiment(ctx, memory.AbilityGrowthExperimentInput{
@@ -89,27 +107,28 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 		RequestedBy:          defaultActor(in.RequestedBy),
 		ParentApprovedBy:     in.ParentApprovedBy,
 		HarnessVerifiedBy:    in.HarnessVerifiedBy,
-		SpecialistArtifactID: specialistArtifactID,
+		SpecialistArtifactID: candidateArtifactID,
 		Notes:                in.Notes,
 	})
 	if err != nil {
 		return nil, err
 	}
-	if specialistArtifactID != "" {
+	if candidateArtifactID != "" {
 		if _, err := s.store.CreateSpecialistArtifactEvent(ctx, memory.SpecialistArtifactEventInput{
-			ArtifactID:   specialistArtifactID,
+			ArtifactID:   candidateArtifactID,
 			SpecialistID: specialistID,
 			EventType:    "growth_staged",
 			ExperimentID: experimentID,
 			Actor:        defaultActor(in.RequestedBy),
-			Reason:       firstNonEmpty(in.Notes, "growth experiment staged against current specialist artifact"),
+			Reason:       firstNonEmpty(in.Notes, "candidate artifact staged for growth experiment"),
 			MetadataJSON: map[string]interface{}{
-				"status":            status,
-				"ability_name":      in.AbilityName,
-				"preferred_surface": preferredSurface(in.PreferredSurface),
+				"status":             status,
+				"ability_name":       in.AbilityName,
+				"preferred_surface":  preferredSurface(in.PreferredSurface),
+				"parent_artifact_id": parentArtifactID,
 			},
 		}); err != nil {
-			s.logger.Warn("specialist artifact growth event persistence failed", "specialist_id", specialistID, "experiment_id", experimentID, "err", err)
+			s.logger.Warn("candidate artifact growth event persistence failed", "specialist_id", specialistID, "experiment_id", experimentID, "err", err)
 		}
 	}
 
@@ -118,7 +137,8 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 		"ability", in.AbilityName,
 		"status", status,
 		"surface", preferredSurface(in.PreferredSurface),
-		"specialist_artifact_id", specialistArtifactID,
+		"parent_artifact_id", parentArtifactID,
+		"candidate_artifact_id", candidateArtifactID,
 		"experiment_id", experimentID,
 	)
 

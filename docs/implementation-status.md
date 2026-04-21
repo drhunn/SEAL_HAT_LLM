@@ -34,9 +34,10 @@ The Go side already has:
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
-- initial specialist-artifact persistence support for the current local model unit on startup
-- initial growth staging support that now links ability-growth experiments to the current specialist artifact when available
-- specialist artifact event history support for startup registration, artifact-linked growth staging, and oversight-triggered promotion/rollback event hooks
+- current specialist-artifact persistence support for the active local model unit on startup
+- growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
+- specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
+- initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
 
 ### SQL layer
 The SQL side already has:
@@ -48,8 +49,9 @@ The SQL side already has:
 - SEAL/DEN tables for signals, proposals, plans, lineage, promotion decisions, and bundle versions
 - a route-episode table for durable routing/execution episode capture
 - a specialist-artifact table for durable model-unit artifact records
-- an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the current specialist artifact
+- an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the candidate artifact for that experiment
 - a specialist-artifact-events table for durable artifact lifecycle/event history
+- a candidate-artifact lifecycle migration that normalizes `active` -> `current` and enforces one current artifact per specialist
 - seed and verify scripts
 
 ### Python HAT layer
@@ -83,9 +85,8 @@ These paths exist, but they are intentionally small and not yet broad production
 - model-unit bootstrap ownership cleanup without per-unit embedded storage yet
 - initial unit-registry resolution layered on top of the existing executor policy rather than full multi-unit routing
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
-- specialist-artifact persistence for the current local model unit rather than a full DEN-produced bundle pipeline
-- artifact-linked growth staging that still points at the current startup-persisted artifact rather than a richer lifecycle-managed bundle
-- artifact lifecycle history through event records rather than real promotion/rollback state transitions
+- current/candidate artifact separation with candidate rows created during growth staging
+- artifact lifecycle history through event records plus narrow promotion/rollback helpers, rather than a full lifecycle state engine
 
 ## Still scaffolded or partial
 
@@ -97,7 +98,7 @@ These areas are present in design and partially present in code, but not complet
 - governed dynamic growth beyond proposal and plan staging
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
-- specialist artifact lifecycle beyond startup persistence, event history, and durable record updates
+- specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
 
 ## Not implemented yet
 
@@ -113,9 +114,9 @@ These are still outside the current runtime:
 - distributed queue backends
 - production multimodal stack
 - benchmarked production training workflows
-- full promotion / rollback enforcement for growth experiments
+- full promotion / rollback enforcement for growth experiments across the wider runtime
 - DEN-produced model-unit bundles with full artifact packaging
-- real specialist artifact promotion/rollback state transitions instead of event history alone
+- verify coverage for one-current-artifact invariants and candidate promotion/rollback transitions
 
 ## Known weak spots
 
@@ -127,9 +128,8 @@ The repo is most likely to fail when:
 - duplicated policy logic drifts across packages
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
 - initial unit-registry resolution is mistaken for real multi-unit orchestration
-- initial specialist-artifact persistence is mistaken for a full specialist lifecycle pipeline
-- artifact-linked growth staging is mistaken for real bundle production or lifecycle promotion
-- artifact event history is mistaken for a full lifecycle state engine
+- candidate artifact creation is mistaken for full bundle production
+- narrow promotion/rollback helpers are mistaken for a full lifecycle state engine
 
 ## Next milestone
 

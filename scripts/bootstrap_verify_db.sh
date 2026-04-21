@@ -19,7 +19,8 @@ for f in \
   sql/20260421_route_episodes.sql \
   sql/20260421_specialist_artifacts.sql \
   sql/20260421_ability_growth_artifact_refs.sql \
-  sql/20260421_specialist_artifact_events.sql
+  sql/20260421_specialist_artifact_events.sql \
+  sql/20260421_candidate_artifact_lifecycle.sql
  do
   psql "$DSN" -v ON_ERROR_STOP=1 -f "$f"
  done
