@@ -32,6 +32,7 @@ The Go side already has:
 - an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
+- execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - current specialist-artifact persistence support for the active local model unit on startup
@@ -52,6 +53,7 @@ The SQL side already has:
 - an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the candidate artifact for that experiment
 - a specialist-artifact-events table for durable artifact lifecycle/event history
 - a candidate-artifact lifecycle migration that normalizes `active` -> `current` and enforces one current artifact per specialist
+- verify checks for one-current-artifact invariants and growth/artifact lifecycle alignment
 - seed and verify scripts
 
 ### Python HAT layer
@@ -92,7 +94,7 @@ These paths exist, but they are intentionally small and not yet broad production
 
 These areas are present in design and partially present in code, but not complete:
 - DB/filesystem slot synchronization as a full live workflow
-- lifecycle enforcement as a real state machine
+- lifecycle enforcement as a real state machine across the wider runtime
 - context-overflow summarization as an always-on runtime behavior
 - durable multimodal execution beyond the current bounded path
 - governed dynamic growth beyond proposal and plan staging
@@ -116,14 +118,13 @@ These are still outside the current runtime:
 - benchmarked production training workflows
 - full promotion / rollback enforcement for growth experiments across the wider runtime
 - DEN-produced model-unit bundles with full artifact packaging
-- verify coverage for one-current-artifact invariants and candidate promotion/rollback transitions
+- end-to-end runtime usage of explicit preferred unit ids across all task construction paths
 
 ## Known weak spots
 
 The repo is most likely to fail when:
 - the Go runtime and SQL schema drift apart
 - migrations are not applied in the target database
-- verify is treated as a vague smoke test instead of a hard contract check
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
