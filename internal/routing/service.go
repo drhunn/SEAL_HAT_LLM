@@ -35,11 +35,12 @@ type Decision struct {
 }
 
 type Service struct {
-	logger *slog.Logger
+	logger   *slog.Logger
+	registry *unit.Registry
 }
 
-func NewService(logger *slog.Logger) *Service {
-	return &Service{logger: logger}
+func NewService(logger *slog.Logger, registry *unit.Registry) *Service {
+	return &Service{logger: logger, registry: registry}
 }
 
 func (s *Service) Decide(ctx context.Context, taskSummary, taskClass string) Decision {
@@ -57,7 +58,7 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 	}
 
 	selection := executors.Select(primary, in.SecondaryModalities, in.CrossModalGroundingRequired, true)
-	target := unitref.ForExecutor(selection.Executor.String())
+	target := s.resolveTarget(selection.Executor.String())
 	decision := Decision{
 		TaskSummary:     in.TaskSummary,
 		TaskClass:       in.TaskClass,
@@ -83,6 +84,20 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		"requires_fusion", decision.RequiresFusion,
 	)
 	return decision
+}
+
+func (s *Service) resolveTarget(executorName string) unitref.Target {
+	if s != nil && s.registry != nil {
+		if spec, ok := s.registry.ResolveExecutor(executorName); ok {
+			return unitref.Target{
+				UnitID:       spec.UnitID,
+				Role:         spec.Role,
+				ModelRef:     spec.ModelRef,
+				ExecutorName: spec.ExecutorName,
+			}
+		}
+	}
+	return unitref.ForExecutor(executorName)
 }
 
 func SignalsForDecision(specialistID string, in Input, decision Decision, collector *telemetry.Collector) []telemetry.Signal {
