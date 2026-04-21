@@ -42,7 +42,13 @@ These are the load-bearing rules for the repo:
 ## Quick start
 
 ### 1. Bootstrap the database
-Apply the SQL files in this order:
+Use the shared bootstrap script:
+- `make bootstrap-db`
+
+Or call it directly with a DSN:
+- `./scripts/bootstrap_verify_db.sh 'postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable'`
+
+The script applies:
 1. `sql/postgres-ddl.sql`
 2. `sql/three-tier-memory.sql`
 3. `sql/functions.sql`
@@ -66,6 +72,7 @@ Apply the SQL files in this order:
 - `specialists/` — instantiated specialist slot files
 - `templates/` — specialist template pack
 - `sql/` — schema, functions, seed data, and verification SQL
+- `scripts/` — shared operational scripts
 - `cmd/` — executable entrypoints
 - `internal/` — Go runtime packages
 - `python/` — HAT dataset and training-support tooling
