@@ -25,6 +25,7 @@ import (
 
 type LocalRuntime struct {
 	Spec      Spec
+	Registry  *Registry
 	Store     *memory.PostgresStore
 	Harness   *harness.Service
 	Routing   *routing.Service
@@ -46,6 +47,7 @@ func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, l
 		return nil, fmt.Errorf("logger is required")
 	}
 
+	registry := NewRegistry(BuiltinSpecs(spec)...)
 	store := memory.NewPostgresStore(database, logger)
 	slotLoader := slots.NewFilesystemLoader(spec.SlotsRoot)
 	slotSyncService := slotsync.NewService(slotLoader, logger)
@@ -55,13 +57,14 @@ func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, l
 	growthService := growth.NewService(store, logger)
 	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
 	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
-	routingService := routing.NewService(logger)
+	routingService := routing.NewService(logger, registry)
 	hostRegistry := modelhost.NewSimulatedRegistry(hostPrefix(spec))
-	executionService := execution.NewService(logger, hostRegistry)
+	executionService := execution.NewService(logger, hostRegistry, registry)
 	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
 
 	return &LocalRuntime{
 		Spec:      spec,
+		Registry:  registry,
 		Store:     store,
 		Harness:   harnessService,
 		Routing:   routingService,
