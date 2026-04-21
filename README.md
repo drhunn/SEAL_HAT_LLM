@@ -14,6 +14,17 @@ The goal of this project is to research **governed adaptive model systems** in w
 - the **harness** enforces review, rollback, and execution boundaries
 - **slot governance** defines what is mutable, what is protected, and how changes are proposed
 
+The parent is intended to be a **generalist** that becomes a **learning routing/orchestration layer** over time.
+That means the parent should get better at deciding:
+- when to handle work itself
+- when to route to a specialist
+- when to invoke retrieval first
+- when multimodal fusion is required
+- when to escalate, defer, or refuse
+
+That learning does **not** replace governance.
+The parent may learn how to route and orchestrate more effectively, but the harness and slot governance still define what is admissible, what requires review, and what structural changes are allowed.
+
 In plain English:
 this project exists to test whether a specialist system can improve through bounded, evidence-driven adaptation without becoming opaque, unreviewable, or structurally sloppy.
 
