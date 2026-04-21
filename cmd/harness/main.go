@@ -10,19 +10,7 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/evals"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/growth"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/harness"
-	workflow "github.com/drhunn/SEAL_HAT_LLM/internal/harness/workflows"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/lifecycle"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/postmortem"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/slotsync"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 )
 
 func main() {
@@ -48,25 +36,29 @@ func main() {
 	}
 	defer database.Close()
 
-	// If this looks like paperwork, that's because governance is paperwork with better logging.
-	store := memory.NewPostgresStore(database, logger)
-	slotLoader := slots.NewFilesystemLoader(cfg.Runtime.SlotsRoot)
-	slotSyncService := slotsync.NewService(slotLoader, logger)
-	pmService := postmortem.NewService(store, logger, cfg.Harness.DefaultCreatedBy)
-	evalService := evals.NewService(store, logger)
-	lifecycleService := lifecycle.NewService(database, logger)
-	growthService := growth.NewService(store, logger)
-	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
-	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
-	routingService := routing.NewService(logger)
-	hostRegistry := modelhost.NewSimulatedRegistry("local")
-	executionService := execution.NewService(logger, hostRegistry)
-	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
-
-	if err := runtimeService.Start(ctx); err != nil {
-		logger.Error("runtime stopped with error", "err", err)
+	unitSpec, err := unit.SpecFromConfig(cfg)
+	if err != nil {
+		logger.Error("build unit spec", "err", err)
 		os.Exit(1)
 	}
 
-	logger.Info("runtime stopped cleanly")
+	localRuntime, err := unit.NewLocalRuntime(unitSpec, cfg, database, logger)
+	if err != nil {
+		logger.Error("bootstrap local runtime unit", "unit_id", unitSpec.UnitID, "err", err)
+		os.Exit(1)
+	}
+
+	logger.Info("starting local model unit",
+		"unit_id", unitSpec.UnitID,
+		"role", unitSpec.Role,
+		"store_mode", unitSpec.StoreMode,
+		"tool_plane_mode", unitSpec.ToolPlaneMode,
+	)
+
+	if err := localRuntime.Start(ctx); err != nil {
+		logger.Error("runtime stopped with error", "unit_id", unitSpec.UnitID, "err", err)
+		os.Exit(1)
+	}
+
+	logger.Info("runtime stopped cleanly", "unit_id", unitSpec.UnitID)
 }
