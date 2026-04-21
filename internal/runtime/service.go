@@ -34,6 +34,7 @@ type TaskResult struct {
 	RoutingDecision  routing.Decision
 	ExecutionResult  execution.Result
 	Signals          []telemetry.Signal
+	Warnings         []string
 }
 
 type TaskReview struct {
