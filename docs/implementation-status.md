@@ -30,6 +30,7 @@ The Go side already has:
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
 - an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
+- an explicit unit-owned store bootstrap abstraction with a bootstrapped local-runtime constructor for `shared_dsn` mode and an explicit `embedded_postgres` not-yet-implemented boundary
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
@@ -41,7 +42,7 @@ The Go side already has:
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning, preferred-unit routing, and oversight artifact-event hooks
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, and unit-owned store bootstrap mode selection
 
 ### SQL layer
 The SQL side already has:
@@ -92,6 +93,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - current/candidate artifact separation with candidate rows created during growth staging
 - artifact lifecycle history through event records plus narrow promotion/rollback helpers, rather than a full lifecycle state engine
+- unit-owned store bootstrap abstraction with the current harness entrypoint still using the legacy externally opened database path
 
 ## Still scaffolded or partial
 
@@ -104,6 +106,7 @@ These areas are present in design and partially present in code, but not complet
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
+- full adoption of the bootstrapped local-runtime constructor by the main harness entrypoint
 
 ## Not implemented yet
 
@@ -122,6 +125,7 @@ These are still outside the current runtime:
 - full promotion / rollback enforcement for growth experiments across the wider runtime
 - DEN-produced model-unit bundles with full artifact packaging
 - broad exercised lifecycle tests beyond the current preferred-unit and oversight hook coverage
+- actual embedded Postgres bootstrap and lifecycle management
 
 ## Known weak spots
 
