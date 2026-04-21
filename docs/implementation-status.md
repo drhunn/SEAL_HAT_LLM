@@ -29,6 +29,7 @@ The Go side already has:
 - DEN growth-plan generation scaffolding
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
+- an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
 
 ### SQL layer
 The SQL side already has:
@@ -68,6 +69,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - telemetry-driven proposal generation
 - growth-plan staging
 - multimodal-aware planning
+- model-unit bootstrap ownership cleanup without per-unit embedded storage yet
 
 ## Still scaffolded or partial
 
