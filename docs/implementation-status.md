@@ -30,6 +30,7 @@ The Go side already has:
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
 - an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
+- compatibility routing/execution target fields that now carry **unit-target metadata** alongside the existing executor names
 
 ### SQL layer
 The SQL side already has:
@@ -70,6 +71,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - growth-plan staging
 - multimodal-aware planning
 - model-unit bootstrap ownership cleanup without per-unit embedded storage yet
+- compatibility unit-target routing layered on top of executor-name dispatch
 
 ## Still scaffolded or partial
 
@@ -89,6 +91,7 @@ These are still outside the current runtime:
 - per-model harness runtime units across parent and specialists
 - per-model embedded Postgres deployment
 - explicit cross-model replication or governed sharing between model-local stores
+- routing that targets real model units instead of compatibility-mapped executor names
 - a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
 - production tool broker integration across multiple harnesses
@@ -107,6 +110,7 @@ The repo is most likely to fail when:
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
+- compatibility unit-target mapping is mistaken for real multi-unit orchestration
 
 ## Next milestone
 
