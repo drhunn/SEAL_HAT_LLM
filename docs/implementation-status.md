@@ -33,12 +33,14 @@ The Go side already has:
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
+- startup-task construction and task-inbox parsing paths that now carry `PreferredUnitID` into live runtime task objects
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - current specialist-artifact persistence support for the active local model unit on startup
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
+- direct test coverage for preferred-unit execution planning and oversight artifact-event hooks
 
 ### SQL layer
 The SQL side already has:
@@ -118,7 +120,7 @@ These are still outside the current runtime:
 - benchmarked production training workflows
 - full promotion / rollback enforcement for growth experiments across the wider runtime
 - DEN-produced model-unit bundles with full artifact packaging
-- end-to-end runtime usage of explicit preferred unit ids across all task construction paths
+- broad exercised lifecycle tests beyond the current preferred-unit and oversight hook coverage
 
 ## Known weak spots
 
