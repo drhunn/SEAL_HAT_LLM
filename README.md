@@ -31,6 +31,8 @@ The architectural intent is to replace a traditional mixture-of-experts style in
 - preserve higher resolution on repeated narrow work
 - remain auditable, reviewable, and reversible system components
 
+The first instantiated specialist is the **ComputerScience-SoftwareEngineering specialist**, which exists to build the tooling, runtime, harness, and evaluation infrastructure, and to prepare governed descendant copies of the base model for later specialist creation through pruning, distillation, freezing, and bounded adaptation.
+
 That learning does **not** replace governance.
 The parent may learn how to route and orchestrate more effectively, but the harness and slot governance still define what is admissible, what requires review, and what structural changes are allowed.
 
