@@ -1,8 +1,11 @@
 # SEAL_HAT_LLM
 
-SEAL_HAT_LLM is a governed scaffold for a slot-driven specialist runtime with:
-- a frozen parent / adaptive specialist model
-- Postgres + pgvector as the durable memory plane
+SEAL_HAT_LLM is a governed scaffold for a specialist-runtime research project whose target shape is:
+- a frozen parent / adaptive specialist model family
+- **one harness per model**
+- **one embedded Postgres per model**
+- explicit smaller specialist models derived from the base model
+- a later shared RPC/IPC tool plane that multiple harnesses can call without sharing memory or authority
 - a Go runtime scaffold for routing, execution, health, and persistence
 - a Python HAT layer for dataset building and training support
 
@@ -33,6 +36,14 @@ The architectural intent is to replace a traditional mixture-of-experts style in
 
 The first instantiated specialist is the **ComputerScience-SoftwareEngineering specialist**, which exists to build the tooling, runtime, harness, and evaluation infrastructure, and to prepare governed descendant copies of the base model for later specialist creation through pruning, distillation, freezing, and bounded adaptation.
 
+Each model is intended to run as a **self-contained model unit** with:
+- its own model artifact
+- its own harness
+- its own embedded Postgres
+- its own slots, memory, evals, postmortems, and lifecycle state
+
+Later versions are intended to move tools into a **shared RPC/IPC tool plane** so multiple harnesses can use the same tool executable while still enforcing their own local permissions, memory rules, and governance checks.
+
 That learning does **not** replace governance.
 The parent may learn how to route and orchestrate more effectively, but the harness and slot governance still define what is admissible, what requires review, and what structural changes are allowed.
 
@@ -40,8 +51,8 @@ In plain English:
 this project exists to test whether a specialist system can improve through bounded, evidence-driven adaptation without becoming opaque, unreviewable, or structurally sloppy.
 
 The intended loop is:
-1. run bounded specialist tasks
-2. record failures, telemetry, evals, and memory
+1. run bounded specialist tasks through model-local harnesses
+2. record failures, telemetry, evals, and memory in model-local stores
 3. let SEAL decide whether the evidence justifies change
 4. let the harness and slot governance decide whether that change is admissible
 5. let DEN perform the approved structural change in a reversible form
@@ -63,9 +74,10 @@ The current codebase already supports:
 - Python dataset generation from repo slots and optional Postgres corpora
 
 It does **not** yet provide:
+- per-model harness runtime units across parent and specialists
+- per-model embedded Postgres deployment
+- a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
-- a real tool broker
-- remote intake APIs or queue backends
 - production multimodal execution
 - production training orchestration
 
@@ -76,7 +88,8 @@ These are the load-bearing rules for the repo:
 - markdown does not grant authority by itself
 - constitutional slots are parent-governed
 - operational improvements stay bounded and reviewable
-- durable memory lives in Postgres, not in chat transcript sprawl
+- model-local memory is authoritative by default
+- cross-model sharing must be explicit and governed
 - meaningful failures require postmortems
 - schema/runtime drift is treated as a real defect
 
