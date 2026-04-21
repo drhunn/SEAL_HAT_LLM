@@ -42,8 +42,9 @@ func (s *PostgresStore) UpsertSpecialistArtifact(ctx context.Context, in Special
 			rollback_ref,
 			metadata,
 			updated_at
-		) VALUES ($1,$2,$3,$4,$5,NULLIF($6,''),$7,NULLIF($8,''),NULLIF($9,''),NULLIF($10,''),NULLIF($11,''),$12,NULLIF($13,''),$14,now())
-		ON CONFLICT (specialist_id, unit_id) DO UPDATE SET
+		) VALUES ($1,$2,$3,$4,$5,NULLIF($6,''),$7,NULLIF($8,''),NULLIF($9,''),NULLIF($10,''),NULLIF($11,''),'current',NULLIF($12,''),$13,now())
+		ON CONFLICT (specialist_id) WHERE activation_status = 'current' DO UPDATE SET
+			unit_id = EXCLUDED.unit_id,
 			role = EXCLUDED.role,
 			model_ref = EXCLUDED.model_ref,
 			harness_config_ref = EXCLUDED.harness_config_ref,
@@ -52,7 +53,7 @@ func (s *PostgresStore) UpsertSpecialistArtifact(ctx context.Context, in Special
 			slot_bundle_ref = EXCLUDED.slot_bundle_ref,
 			slot_version_hash = EXCLUDED.slot_version_hash,
 			eval_suite_ref = EXCLUDED.eval_suite_ref,
-			activation_status = EXCLUDED.activation_status,
+			activation_status = 'current',
 			rollback_ref = EXCLUDED.rollback_ref,
 			metadata = EXCLUDED.metadata,
 			updated_at = now()
@@ -61,10 +62,6 @@ func (s *PostgresStore) UpsertSpecialistArtifact(ctx context.Context, in Special
 	id := strings.TrimSpace(in.ID)
 	if id == "" {
 		id = defaultSpecialistArtifactID(in.SpecialistID, in.UnitID)
-	}
-	status := strings.TrimSpace(in.ActivationStatus)
-	if status == "" {
-		status = "defined"
 	}
 	metadataBytes, err := json.Marshal(in.MetadataJSON)
 	if err != nil {
@@ -86,7 +83,6 @@ func (s *PostgresStore) UpsertSpecialistArtifact(ctx context.Context, in Special
 		in.SlotBundleRef,
 		in.SlotVersionHash,
 		in.EvalSuiteRef,
-		status,
 		in.RollbackRef,
 		metadataBytes,
 	).Scan(&out); err != nil {
