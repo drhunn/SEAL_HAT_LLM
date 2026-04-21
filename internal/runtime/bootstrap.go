@@ -40,6 +40,7 @@ func (s *Service) Start(ctx context.Context) error {
 			"version_hash", packet.VersionHash,
 		)
 	}
+	s.persistSpecialistArtifact(runCtx, "artifacts/slot_packet.json", packet.VersionHash)
 
 	s.logger.Info("runtime initialized",
 		"specialist_id", s.cfg.Runtime.SpecialistID,

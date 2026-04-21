@@ -16,7 +16,8 @@ for f in \
   sql/verify.sql \
   sql/multimodal-memory.sql \
   sql/20260420_seal_den_growth.sql \
-  sql/20260421_route_episodes.sql
+  sql/20260421_route_episodes.sql \
+  sql/20260421_specialist_artifacts.sql
  do
   psql "$DSN" -v ON_ERROR_STOP=1 -f "$f"
  done
