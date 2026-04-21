@@ -33,6 +33,7 @@ The Go side already has:
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
+- routing support for explicitly preferred **unit IDs** in addition to executor-policy selection
 - startup-task construction and task-inbox parsing paths that now carry `PreferredUnitID` into live runtime task objects
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
@@ -40,7 +41,7 @@ The Go side already has:
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning and oversight artifact-event hooks
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, and oversight artifact-event hooks
 
 ### SQL layer
 The SQL side already has:
@@ -110,7 +111,7 @@ These are still outside the current runtime:
 - per-model harness runtime units across parent and specialists
 - per-model embedded Postgres deployment
 - explicit cross-model replication or governed sharing between model-local stores
-- routing that targets real model units end to end without the old executor policy as the decision source
+- routing that targets real model units end to end without the old executor policy as the primary decision source across the wider runtime
 - a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
 - production tool broker integration across multiple harnesses
