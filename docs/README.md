@@ -19,12 +19,12 @@ These documents explain the intended shape of the system:
 - `developmental-model.md`
 - `context-window-strategy.md`
 - `multimodal-architecture.md`
-- `seal-den-system-architecture.md`
-- `parent-routing-orchestration-strategy.md`
+- `seal-den-system-architecture.md` — parent/specialist roles, per-model harness/db target shape, and oversight/DEN structure
+- `parent-routing-orchestration-strategy.md` — learned parent routing over specialist model units and later shared tool use
 - `den-freeze-policy.md`
 - `dynamic-architecture-strategy.md`
 - `ability-first-growth-strategy.md`
-- `model-lineage-strategy.md`
+- `model-lineage-strategy.md` — descendant model artifacts, specialist lineage, and bundle-level model-unit packaging
 
 ## Contracts and reconciliation
 
