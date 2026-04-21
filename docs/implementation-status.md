@@ -1,151 +1,123 @@
-# IMPLEMENTATION STATUS
+# Implementation status
 
-## purpose
-This document separates the target architecture from the currently implemented state of `SEAL_HAT_LLM`.
+This file separates the **working code paths** from the **documented target architecture**.
 
----
+## Bottom line
 
-## implemented now
+SEAL_HAT_LLM is a working scaffold.
+It is not a production runtime.
 
-### documentation and governance
-- architecture, runbooks, incident taxonomy, recovery playbooks, eval taxonomy, lineage strategy, developmental model, ability-first growth strategy, dynamic architecture strategy, context-window strategy, multimodal extension, and harness-aware training docs exist
-- specialist slot model is documented and instantiated for the first specialist
-- markdown preservation convention for blocked in-session updates is documented
-- MM-ELLS naming is reflected in the core docs
-- the documentation now frames growth as DEN-style, ability-first, and governed rather than size-first
-- SEAL and DEN system architecture is now documented explicitly
+The repo already has enough real code to support verification, bounded task processing, canonical slot compilation, Postgres-backed persistence, and Python dataset generation.
+It does not yet have a full live specialist system, a production tool broker, or production growth machinery.
 
-### Go runtime scaffold
-- config loading
+## Implemented now
+
+### Go runtime
+The Go side already has:
+- TOML config loading
 - Postgres connection pooling
-- slot file loading
-- canonical specialist slot bundle compilation and TOML emission
-- runtime startup path
-- bounded runtime task processing path now exists through `runtime.Service.ProcessTask`
-- file-backed runtime task inbox now exists and can claim JSON task files, process them, and move them to `processed/` or `failed/` without deleting them
-- harness incident handling is now wired into the bounded task path for execution errors, parent-review requirements, and high-severity runtime signals
-- harness service scaffold
-- postmortem creation path
-- eval staging path
-- retrieval wrapper scaffold
-- routing audit write path scaffold
-- lifecycle service scaffold
-- standalone `cmd/verify` command
+- specialist slot loading from the filesystem
+- canonical slot bundle compilation and TOML emission
+- bounded task processing through `runtime.Service.ProcessTask`
+- a conservative file-backed task inbox
+- harness incident handling for execution failures and review-required signals
+- retrieval helpers and routing audit write paths
 - modality-aware routing and execution planning
-- model-host abstraction and simulated host registry wiring
-- telemetry collector, in-memory telemetry store, and retrieval/routing/execution signal helpers now exist
-- SEAL proposal generation scaffold now exists
-- DEN growth planning scaffold now exists
-- oversight and lineage scaffolds now exist
-- basic Go unit tests for retrieval helpers, routing, execution planning, recovery planner logic, slot compiler behavior, runtime task helpers, SEAL proposal generation, and DEN plan generation
-- DB-backed runtime integration tests now cover bounded task success persistence and failure-triggered postmortem/eval writes when `TEST_DATABASE_DSN` is provided
-- task inbox unit tests now cover file claiming, processed archiving, failed archiving, and error-note emission
+- simulated model-host execution wiring
+- telemetry collection and signal helpers
+- SEAL proposal generation scaffolding
+- DEN growth-plan generation scaffolding
+- lifecycle, oversight, and lineage scaffolding
+- `cmd/verify` as a real admission path
 
-### SQL scaffold
-- base schema for specialists, slots, memory records, embeddings, postmortems, eval cases, self-edit candidates, and routing audit
-- hierarchical memory schema for regions and clusters
-- starter memory functions and coarse-to-fine search function
-- multimodal-memory scaffold tables
-- SEAL/DEN scaffold tables for adaptation signals, proposals, growth plans, lineage, promotion decisions, and slot bundle versions now exist
+### SQL layer
+The SQL side already has:
+- base specialist / slot / memory tables
+- coarse-to-fine memory hierarchy tables
+- retrieval and health helper functions
+- postmortem, eval, and self-edit staging tables
+- multimodal scaffold tables
+- SEAL/DEN tables for signals, proposals, plans, lineage, promotion decisions, and bundle versions
 - seed and verify scripts
 
-### Python HAT tooling
-- slot-aware prompt construction
+### Python HAT layer
+The Python side already has:
+- repository slot loading
 - governed dataset building
-- repo slot loading
 - optional Postgres corpus ingestion
 - governance-pressure negative example generation
-- HF/LoRA-style export helpers
-- direct `DatasetDict` export support
-- PEFT LoRA training scaffold
-- Python unit tests for policy and dataset builder basics
+- JSON / JSONL export helpers
+- optional `DatasetDict` export support
+- a JAX training scaffold
+- unit tests for policy and dataset basics
 
 ### CI and checks
-- basic GitHub Actions workflow exists
-- Go build/test is wired into CI
-- CI now injects `TEST_DATABASE_DSN` for DB-backed runtime integration coverage
-- Python compile checks and unit tests are wired into CI
-- `make verify` exists for schema/runtime smoke checking
+The repo already has:
+- GitHub Actions CI
+- Go build and test coverage in CI
+- DB-backed runtime integration coverage via `TEST_DATABASE_DSN`
+- strict verify in CI against a bootstrapped Postgres + pgvector service
+- Python compile checks and unit tests
 
----
+## Implemented, but still narrow
 
-## partially implemented / scaffolded
+These paths exist, but they are intentionally small and not yet broad production systems:
+- bounded single-task orchestration
+- file-backed local task intake
+- slot bundle persistence
+- telemetry-driven proposal generation
+- growth-plan staging
+- multimodal-aware planning
 
-### runtime orchestration
-- parent/specialist orchestration now has a bounded single-task execution path and a file-backed task inbox, but not yet a full live production loop with remote intake or queue semantics
-- sub-agent orchestration remains mostly architectural and policy-level rather than deeply implemented
-- tool broker integration is still conceptual
-- slot DB/filesystem synchronization is now stronger because the canonical bundle compiler exists, but DB-backed bundle reconciliation is still not a full live sync workflow
+## Still scaffolded or partial
 
-### lifecycle and health
-- health update hooks exist in Go and SQL, but they still need ongoing reconciliation as the schema and runtime evolve
-- degraded/suspended transitions are conceptually defined and partially wired, but not yet enforced by a full state machine
+These areas are present in design and partially present in code, but not complete:
+- DB/filesystem slot synchronization as a full live workflow
+- lifecycle enforcement as a real state machine
+- context-overflow summarization as an always-on runtime behavior
+- durable multimodal execution beyond the current bounded path
+- governed dynamic growth beyond proposal and plan staging
+- deeper sub-agent orchestration
 
-### retrieval and memory operations
-- retrieval wrapper exists, but SQL/runtime contracts still need active verification as both evolve
-- candidate staging paths exist in Go, and the DB layer is closer to matching them, but this remains an area to watch
-- context-overflow summarization to Postgres is now architectural policy, but not yet fully implemented as a live orchestration workflow
-- multimodal execution persistence helpers now exist, and the bounded runtime task path now persists execution artifacts, but the runtime still needs deeper integration beyond the current single-task path
-- `cmd/verify` now attempts durable bundle, signal, proposal, and growth-plan persistence, but still falls back safely when the new migration has not been applied yet
+## Not implemented yet
 
-### training and growth
-- dataset generation is useful now
-- training support is more real than before, but still scaffold-level and framework-dependent rather than benchmarked production training
-- DEN-style ability-first growth is no longer only documented: the repo now has telemetry, proposal, and planning scaffolds, and the runtime can stage a bounded task-follow-up growth record, but governed dynamic growth is still not a full production runtime
-- the existing `growth` package should now be understood as the governed experiment-execution layer under SEAL and DEN decisions rather than a competing governor
+These are still outside the current runtime:
+- production multi-specialist orchestration
+- production tool broker integration
+- remote intake APIs
+- distributed queue backends
+- production multimodal stack
+- benchmarked production training workflows
+- full promotion / rollback enforcement for growth experiments
 
-### multimodal direction
-- multimodal architecture and memory scaffold direction are documented
-- the live runtime now has modality-aware routing and execution planning, but it is still not a full real multimodal production stack
+## Known weak spots
 
----
+The repo is most likely to fail when:
+- the Go runtime and SQL schema drift apart
+- migrations are not applied in the target database
+- verify is treated as a vague smoke test instead of a hard contract check
+- docs are read as implementation proof
+- duplicated policy logic drifts across packages
 
-## known weak spots
-- Go runtime and SQL schema/functions must still be kept in sync deliberately
-- the new SEAL/DEN migration must be applied before durable persistence paths fully work
-- CI is useful, but it is still a floor rather than proof of full runtime integration
-- architecture docs are ahead of production readiness
-- multimodal support is no longer just imagined, but still not operationally complete
-- DEN-style dynamic growth policy is now closer to code, but oversight/promotion/rollback are still not fully enforced end to end
-- the file-backed inbox is intentionally conservative and local; it is not yet a remote intake API or a distributed queue
+## Next milestone
 
----
+The next worthwhile milestone is still simple:
 
-## intentionally deferred
-- full multi-specialist orchestration
-- mature eval execution engine
-- production tool broker
-- full benchmark harness
-- distributed or large-scale training workflows
-- live multimodal model integration beyond the current scaffolding
-- full governed dynamic-growth machinery for branches, expert banks, and structured pruning loops
-- remote task intake APIs and queue backends
-
----
-
-## next recommended milestone
-The next milestone should still be:
-
-**single-specialist loop works end to end and persists durably**
+**the single-specialist loop works end to end and persists durably without special pleading**
 
 That means:
 1. config loads
 2. slots load
-3. canonical bundle compiles
-4. DB connects
+3. the canonical bundle compiles and persists
+4. the database contracts hold
 5. retrieval works
-6. postmortem writes
-7. eval case writes
-8. health update works
-9. verify command passes
-10. bundle persistence works against the migrated DB
-11. telemetry writes, SEAL proposal writes, and DEN plan writes work durably
-12. context-overflow policy starts being implemented concretely
-13. the first ability-growth path is executed in a governed way rather than only described in docs
-14. the bounded runtime task path and file inbox graduate into a more explicit intake contract
+6. postmortem and eval writes work
+7. health updates work
+8. strict verify passes cleanly
+9. telemetry, proposal, and growth-plan writes are durable
+10. the task inbox is explicit about what it guarantees and what it does not
 
----
+## Maintenance rule
 
-## summary
-This repository is no longer just an idea, but it is not yet a production runtime.
-It is a strong, explicit, architecture-first scaffold with enough implementation to support focused reconciliation, end-to-end stabilization, canonical slot bundling, a bounded runtime task path, a conservative file-backed task inbox, DB-backed runtime integration coverage, early telemetry-driven SEAL/DEN experimentation, multimodal-aware planning, and a DEN-style ability-first growth direction.
+When code changes the actual runtime surface, update this file in the same change set.
+Do not let architecture notes quietly replace status reporting.
