@@ -7,23 +7,35 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestOpenEmbeddedPostgresRejectsSecondOwner(t *testing.T) {
+func resetEmbeddedPostgresTestHooks(t *testing.T) {
 	oldRun := runEmbeddedCommand
 	oldStatus := embeddedPostgresStatus
 	oldOpenPool := openPool
-	defer func() {
+	oldPingPool := pingPool
+	oldNow := embeddedPostgresNow
+	oldStaleAge := embeddedPostgresStaleLockAge
+	t.Cleanup(func() {
 		runEmbeddedCommand = oldRun
 		embeddedPostgresStatus = oldStatus
 		openPool = oldOpenPool
-	}()
+		pingPool = oldPingPool
+		embeddedPostgresNow = oldNow
+		embeddedPostgresStaleLockAge = oldStaleAge
+	})
+}
+
+func TestOpenEmbeddedPostgresRejectsSecondOwner(t *testing.T) {
+	resetEmbeddedPostgresTestHooks(t)
 
 	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error { return nil }
 	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return true }
-	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return nil, nil }
+	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
+	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
 
 	dataDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dataDir, "PG_VERSION"), []byte("16\n"), 0o644); err != nil {
@@ -42,23 +54,13 @@ func TestOpenEmbeddedPostgresRejectsSecondOwner(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "already in use") {
 		t.Fatalf("expected already in use error, got %v", err)
 	}
-	if h1.Stop == nil {
-		t.Fatalf("expected stop function")
-	}
 	if err := h1.Stop(); err != nil {
 		t.Fatalf("stop returned error: %v", err)
 	}
 }
 
 func TestEmbeddedPostgresStopIsIdempotent(t *testing.T) {
-	oldRun := runEmbeddedCommand
-	oldStatus := embeddedPostgresStatus
-	oldOpenPool := openPool
-	defer func() {
-		runEmbeddedCommand = oldRun
-		embeddedPostgresStatus = oldStatus
-		openPool = oldOpenPool
-	}()
+	resetEmbeddedPostgresTestHooks(t)
 
 	var startCount, stopCount int
 	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error {
@@ -72,7 +74,8 @@ func TestEmbeddedPostgresStopIsIdempotent(t *testing.T) {
 		return nil
 	}
 	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return false }
-	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return nil, nil }
+	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
+	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
 
 	dataDir := t.TempDir()
 	h, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432})
@@ -97,14 +100,7 @@ func TestEmbeddedPostgresStopIsIdempotent(t *testing.T) {
 }
 
 func TestOpenEmbeddedPostgresCleansUpWhenPoolOpenFails(t *testing.T) {
-	oldRun := runEmbeddedCommand
-	oldStatus := embeddedPostgresStatus
-	oldOpenPool := openPool
-	defer func() {
-		runEmbeddedCommand = oldRun
-		embeddedPostgresStatus = oldStatus
-		openPool = oldOpenPool
-	}()
+	resetEmbeddedPostgresTestHooks(t)
 
 	var startCount, stopCount int
 	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error {
@@ -130,5 +126,89 @@ func TestOpenEmbeddedPostgresCleansUpWhenPoolOpenFails(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dataDir, ".embedded_postgres.lock")); !os.IsNotExist(err) {
 		t.Fatalf("expected lock file cleanup, got %v", err)
+	}
+}
+
+func TestOpenEmbeddedPostgresCleansUpWhenPingFails(t *testing.T) {
+	resetEmbeddedPostgresTestHooks(t)
+
+	var startCount, stopCount int
+	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error {
+		joined := strings.Join(args, " ")
+		switch {
+		case strings.Contains(joined, "start"):
+			startCount++
+		case strings.Contains(joined, "stop"):
+			stopCount++
+		}
+		return nil
+	}
+	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return false }
+	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
+	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return errors.New("not ready") }
+
+	dataDir := t.TempDir()
+	_, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432})
+	if err == nil || !strings.Contains(err.Error(), "ping embedded postgres pool") {
+		t.Fatalf("expected ping error, got %v", err)
+	}
+	if startCount != 1 || stopCount != 1 {
+		t.Fatalf("expected one start and one stop, got start=%d stop=%d", startCount, stopCount)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, ".embedded_postgres.lock")); !os.IsNotExist(err) {
+		t.Fatalf("expected lock file cleanup, got %v", err)
+	}
+}
+
+func TestOpenEmbeddedPostgresReclaimsStaleLockWhenServerIsDown(t *testing.T) {
+	resetEmbeddedPostgresTestHooks(t)
+
+	now := time.Date(2026, 4, 21, 22, 30, 0, 0, time.UTC)
+	embeddedPostgresNow = func() time.Time { return now }
+	embeddedPostgresStaleLockAge = time.Minute
+	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error { return nil }
+	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return true }
+	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
+	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
+
+	dataDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dataDir, "PG_VERSION"), []byte("16\n"), 0o644); err != nil {
+		t.Fatalf("write PG_VERSION: %v", err)
+	}
+	staleLock := "pid=123\ncreated_at=" + now.Add(-2*time.Minute).Format(time.RFC3339Nano) + "\n"
+	if err := os.WriteFile(filepath.Join(dataDir, ".embedded_postgres.lock"), []byte(staleLock), 0o600); err != nil {
+		t.Fatalf("write stale lock: %v", err)
+	}
+	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return false }
+
+	h, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432})
+	if err != nil {
+		t.Fatalf("expected stale lock to be reclaimed, got %v", err)
+	}
+	if h == nil || h.Stop == nil {
+		t.Fatalf("expected handle with stop function")
+	}
+	if err := h.Stop(); err != nil {
+		t.Fatalf("stop returned error: %v", err)
+	}
+}
+
+func TestOpenEmbeddedPostgresDoesNotReclaimFreshLock(t *testing.T) {
+	resetEmbeddedPostgresTestHooks(t)
+
+	now := time.Date(2026, 4, 21, 22, 30, 0, 0, time.UTC)
+	embeddedPostgresNow = func() time.Time { return now }
+	embeddedPostgresStaleLockAge = time.Minute
+	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return false }
+
+	dataDir := t.TempDir()
+	freshLock := "pid=123\ncreated_at=" + now.Add(-30*time.Second).Format(time.RFC3339Nano) + "\n"
+	if err := os.WriteFile(filepath.Join(dataDir, ".embedded_postgres.lock"), []byte(freshLock), 0o600); err != nil {
+		t.Fatalf("write fresh lock: %v", err)
+	}
+
+	_, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432})
+	if err == nil || !strings.Contains(err.Error(), "already in use") {
+		t.Fatalf("expected fresh lock rejection, got %v", err)
 	}
 }
