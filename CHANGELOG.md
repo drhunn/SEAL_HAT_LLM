@@ -9,6 +9,19 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-21 19:31:44 UTC — Add an initial embedded Postgres bootstrap path and switch the harness entrypoint to bootstrapped runtime startup (pending)
+**Summary:** Cut the next real store-boundary slice by making store mode configurable, adding an initial embedded Postgres bootstrap path, and switching the harness entrypoint to the bootstrapped local-runtime path instead of opening the database itself.
+
+**Changes:**
+- Updated `cmd/harness/main.go` to use `NewBootstrappedLocalRuntime(...)`.
+- Updated `internal/config/config.go` to add `runtime.store_mode` and `[embedded_postgres]` settings with conditional validation/defaults.
+- Updated `config/runtime.example.toml` to document both store mode and embedded Postgres settings.
+- Added `internal/config/config_test.go` covering embedded-postgres config defaults without requiring `database.dsn`.
+- Added `internal/db/embedded_postgres.go` with an initial local PostgreSQL binary bootstrap path.
+- Updated `internal/unit/spec.go` and `internal/unit/spec_test.go` so unit specs derive store mode from config.
+- Updated `internal/unit/store_bootstrap.go` and `internal/unit/store_bootstrap_test.go` to support real embedded-postgres bootstrap selection.
+- Updated `docs/implementation-status.md` to record the initial embedded-postgres bootstrap path and bootstrapped entrypoint adoption.
+
 ## 2026-04-21 14:12:41 UTC — Carry preferred unit ids through runtime task construction and add direct hook coverage (pending)
 **Summary:** Pushed explicit preferred unit ids farther into the live runtime by wiring them into startup-task and task-inbox construction, and added direct tests for preferred-unit execution planning and oversight artifact-event hooks.
 
