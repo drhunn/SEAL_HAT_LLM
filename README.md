@@ -6,6 +6,25 @@ SEAL_HAT_LLM is a governed scaffold for a slot-driven specialist runtime with:
 - a Go runtime scaffold for routing, execution, health, and persistence
 - a Python HAT layer for dataset building and training support
 
+## Project goal
+
+The goal of this project is to research **governed adaptive model systems** in which:
+- **SEAL** determines when evidence justifies change
+- **DEN** provides the structural change mechanism
+- the **harness** enforces review, rollback, and execution boundaries
+- **slot governance** defines what is mutable, what is protected, and how changes are proposed
+
+In plain English:
+this project exists to test whether a specialist system can improve through bounded, evidence-driven adaptation without becoming opaque, unreviewable, or structurally sloppy.
+
+The intended loop is:
+1. run bounded specialist tasks
+2. record failures, telemetry, evals, and memory
+3. let SEAL decide whether the evidence justifies change
+4. let the harness and slot governance decide whether that change is admissible
+5. let DEN perform the approved structural change in a reversible form
+6. evaluate whether the change actually helped
+
 ## Status
 
 This repository is **not** a production runtime.
