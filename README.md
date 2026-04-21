@@ -46,7 +46,7 @@ Use the shared bootstrap script:
 - `make bootstrap-db`
 
 Or call it directly with a DSN:
-- `./scripts/bootstrap_verify_db.sh 'postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable'`
+- `bash ./scripts/bootstrap_verify_db.sh 'postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable'`
 
 The script applies:
 1. `sql/postgres-ddl.sql`
