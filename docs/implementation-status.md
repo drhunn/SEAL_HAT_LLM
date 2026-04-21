@@ -36,7 +36,7 @@ The Go side already has:
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - initial specialist-artifact persistence support for the current local model unit on startup
 - initial growth staging support that now links ability-growth experiments to the current specialist artifact when available
-- specialist artifact event history support for startup registration and artifact-linked growth staging events
+- specialist artifact event history support for startup registration, artifact-linked growth staging, and oversight-triggered promotion/rollback event hooks
 
 ### SQL layer
 The SQL side already has:
