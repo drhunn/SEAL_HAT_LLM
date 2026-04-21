@@ -8,7 +8,7 @@ SEAL_HAT_LLM is a working scaffold.
 It is not a production runtime.
 
 The repo already has enough real code to support verification, bounded task processing, canonical slot compilation, Postgres-backed persistence, and Python dataset generation.
-It does not yet have a full live specialist system, a production tool broker, or production growth machinery.
+It does not yet have a full live specialist system, per-model harness/runtime units, per-model embedded Postgres deployment, a shared RPC/IPC tool plane, or production growth machinery.
 
 ## Implemented now
 
@@ -78,12 +78,18 @@ These areas are present in design and partially present in code, but not complet
 - durable multimodal execution beyond the current bounded path
 - governed dynamic growth beyond proposal and plan staging
 - deeper sub-agent orchestration
+- route-episode capture for learned parent routing
+- specialist artifact lifecycle beyond names, slot packs, and growth-plan scaffolding
 
 ## Not implemented yet
 
 These are still outside the current runtime:
+- per-model harness runtime units across parent and specialists
+- per-model embedded Postgres deployment
+- explicit cross-model replication or governed sharing between model-local stores
+- a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
-- production tool broker integration
+- production tool broker integration across multiple harnesses
 - remote intake APIs
 - distributed queue backends
 - production multimodal stack
@@ -98,6 +104,7 @@ The repo is most likely to fail when:
 - verify is treated as a vague smoke test instead of a hard contract check
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
+- the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
 
 ## Next milestone
 
@@ -116,6 +123,12 @@ That means:
 8. strict verify passes cleanly
 9. telemetry, proposal, and growth-plan writes are durable
 10. the task inbox is explicit about what it guarantees and what it does not
+
+After that, the repo can make the larger architectural turn toward:
+- model units with local harnesses
+- model units with embedded Postgres
+- governed cross-model sharing
+- a reusable RPC/IPC tool plane
 
 ## Maintenance rule
 
