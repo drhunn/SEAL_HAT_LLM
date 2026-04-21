@@ -95,6 +95,23 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 	if err != nil {
 		return nil, err
 	}
+	if specialistArtifactID != "" {
+		if _, err := s.store.CreateSpecialistArtifactEvent(ctx, memory.SpecialistArtifactEventInput{
+			ArtifactID:   specialistArtifactID,
+			SpecialistID: specialistID,
+			EventType:    "growth_staged",
+			ExperimentID: experimentID,
+			Actor:        defaultActor(in.RequestedBy),
+			Reason:       firstNonEmpty(in.Notes, "growth experiment staged against current specialist artifact"),
+			MetadataJSON: map[string]interface{}{
+				"status":            status,
+				"ability_name":      in.AbilityName,
+				"preferred_surface": preferredSurface(in.PreferredSurface),
+			},
+		}); err != nil {
+			s.logger.Warn("specialist artifact growth event persistence failed", "specialist_id", specialistID, "experiment_id", experimentID, "err", err)
+		}
+	}
 
 	s.logger.InfoContext(ctx, "ability growth experiment staged",
 		"specialist_id", specialistID,
@@ -142,4 +159,13 @@ func scoreForStatus(status string) float64 {
 	default:
 		return 0.25
 	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
