@@ -1,134 +1,74 @@
-# SQL CONTRACTS
+# SQL contracts
 
-## purpose
-Document the SQL helpers and tables that the Go runtime currently expects to exist.
-
-This file is a contract guide between:
+This file is the contract between:
 - `sql/`
 - `internal/memory/`
-- `internal/harness/`
 - `internal/runtime/`
+- `internal/harness/`
 - `cmd/verify/`
 
----
+It documents the database objects the runtime actually expects.
+When the runtime-facing schema changes, this file should change in the same patch.
 
-## core tables expected by runtime
+## Canonical schema
 
-### `agent_core.specialists`
-Expected by runtime for:
-- specialist existence
-- status reads/writes
-- health reads/writes
-- foreign-key anchoring for specialist-scoped persistence
-
-### `agent_core.slots`
-Expected by runtime for:
-- slot identity
-- summary projection targets
-
-### `agent_core.slot_versions`
-Expected by runtime for:
-- projected summary writes
-- version tracking
-
-### `agent_core.slot_bundle_versions`
-Expected by runtime for:
-- canonical compiled slot bundle persistence
-- source-map persistence
-- bundle version tracking from `cmd/verify` and later slot sync paths
-
-### `agent_core.memory_records`
-Expected by runtime for:
-- durable memory storage
-- active/staged/contradicted state
-
-### `agent_core.memory_embeddings`
-Expected by runtime for:
-- record-level retrieval
-
-### `agent_core.memory_regions`
-### `agent_core.memory_region_embeddings`
-### `agent_core.memory_clusters`
-### `agent_core.memory_cluster_embeddings`
-### `agent_core.memory_cluster_members`
-Expected by runtime for:
-- coarse-to-fine retrieval
-
-### `agent_core.memory_postmortems`
-Expected by runtime for:
-- postmortem persistence
-
-### `agent_core.memory_eval_cases`
-Expected by runtime for:
-- eval staging
-
-### `agent_core.memory_self_edit_candidates`
-Expected by runtime for:
-- self-edit candidate staging
-
-### `agent_core.routing_audit`
-Expected by runtime for:
-- routing audit writes
-
-### `agent_core.adaptation_signals`
-Expected by runtime for:
-- durable telemetry persistence from retrieval, routing, and execution signal helpers
-- SEAL review input when using the DB-backed path
-
-### `agent_core.gap_clusters`
-Expected by runtime for:
-- future durable SEAL clustering state
-
-### `agent_core.adaptation_proposals`
-Expected by runtime for:
-- durable SEAL proposal persistence
-
-### `agent_core.growth_plans`
-Expected by runtime for:
-- durable DEN growth-plan persistence
-
-### `agent_core.growth_experiments`
-Expected by runtime for:
-- later governed growth experiment lifecycle tracking
-
-### `agent_core.lineage_nodes`
-### `agent_core.lineage_edges`
-Expected by runtime for:
-- lineage persistence for new specialists, splits, derived branches, and related governed growth artifacts
-
-### `agent_core.promotion_decisions`
-Expected by runtime for:
-- later oversight-driven promotion or rollback tracking
-
----
-
-## identifier and schema expectations
-
-### schema namespace
-The canonical runtime schema is:
+The runtime expects the canonical schema to be:
 - `agent_core`
 
 New migrations should either:
-- set `search_path` to `agent_core, public`, or
-- fully qualify `agent_core.` table names consistently
+- set `search_path TO agent_core, public`, or
+- fully qualify `agent_core.` object names consistently
 
-### identifier shape
-For the current SEAL/DEN scaffolding, the Go runtime and SQL are aligned on:
-- **text-style IDs** for signals, proposals, plans, bundle versions, lineage records, and promotion decisions
+## Identifier strategy
 
-The current runtime does **not** assume DB-generated UUIDs for these paths.
+The current runtime assumes:
+- UUIDs for the original base tables that generate them in SQL
+- text IDs for newer SEAL/DEN scaffold paths such as signals, proposals, growth plans, lineage nodes, and bundle versions
 
----
+Do not change identifier shape casually.
+If you change it, update both Go and SQL together.
 
-## core SQL functions expected by runtime
+## Core tables expected by runtime
+
+### Base runtime tables
+- `agent_core.specialists`
+- `agent_core.slots`
+- `agent_core.slot_versions`
+- `agent_core.memory_records`
+- `agent_core.memory_embeddings`
+- `agent_core.memory_postmortems`
+- `agent_core.memory_eval_cases`
+- `agent_core.memory_self_edit_candidates`
+- `agent_core.routing_audit`
+
+### Coarse-to-fine retrieval tables
+- `agent_core.memory_regions`
+- `agent_core.memory_region_embeddings`
+- `agent_core.memory_clusters`
+- `agent_core.memory_cluster_embeddings`
+- `agent_core.memory_cluster_members`
+
+### Newer scaffold tables
+- `agent_core.slot_bundle_versions`
+- `agent_core.adaptation_signals`
+- `agent_core.gap_clusters`
+- `agent_core.adaptation_proposals`
+- `agent_core.growth_plans`
+- `agent_core.growth_experiments`
+- `agent_core.lineage_nodes`
+- `agent_core.lineage_edges`
+- `agent_core.promotion_decisions`
+- `agent_core.ability_ledgers`
+- `agent_core.ability_growth_experiments`
+
+## Runtime-facing SQL functions
 
 ### `fn_run_coarse_to_fine_search(namespace, specialist_id, query_embedding, top_regions, top_clusters, top_records)`
 Used by:
 - `internal/memory/retrieval.go`
-- `cmd/verify/main.go`
-- runtime startup smoke testing
+- `cmd/verify`
 
-Expected result shape:
+Expected result columns:
 - `record_id`
 - `record_kind`
 - `title`
@@ -142,19 +82,17 @@ Expected result shape:
 ### `fn_update_specialist_health_stats(specialist_id)`
 Used by:
 - `internal/memory/store.go`
-- harness incident follow-up
 
 Expected behavior:
 - recompute and persist specialist health stats
-- return the affected specialist id
+- return the affected specialist ID
 
 ### `fn_get_specialist_health_snapshot(specialist_id)`
 Used by:
 - `internal/memory/store.go`
-- startup checks
-- `cmd/verify/main.go`
+- `cmd/verify`
 
-Expected result shape:
+Expected result columns:
 - `specialist_id`
 - `status`
 - `health_score`
@@ -162,19 +100,16 @@ Expected result shape:
 ### `fn_project_and_write_memory_summary_slot(namespace, specialist_id, created_by, rationale)`
 Used by:
 - `internal/memory/store.go`
-- harness startup checks
 
 Expected behavior:
 - compute a compact `MEMORY.md` summary from durable memory
 - write a new slot version
 - return the target `slot_id`
 
----
+## Write-path expectations
 
-## write-path expectations
-
-### postmortem creation
-Runtime currently expects a direct insert path or equivalent helper for:
+### Postmortem creation
+The runtime expects to persist:
 - namespace
 - specialist_id
 - task_summary
@@ -186,8 +121,8 @@ Runtime currently expects a direct insert path or equivalent helper for:
 - preventable
 - created_by
 
-### eval staging
-Runtime currently expects:
+### Eval staging
+The runtime expects to persist:
 - namespace
 - specialist_id
 - category
@@ -197,8 +132,8 @@ Runtime currently expects:
 - expected_output_or_criteria
 - created_by
 
-### self-edit candidate staging
-Runtime currently expects:
+### Self-edit candidate staging
+The runtime expects to persist:
 - namespace
 - specialist_id
 - target_slot
@@ -207,8 +142,8 @@ Runtime currently expects:
 - rationale
 - proposed_by
 
-### routing audit
-Runtime currently expects fields for:
+### Routing audit
+The runtime expects fields for:
 - task_id
 - routed_by
 - initial_classifier
@@ -224,8 +159,8 @@ Runtime currently expects fields for:
 - multi_specialist_review
 - notes
 
-### canonical slot bundle persistence
-Runtime currently expects:
+### Canonical slot bundle persistence
+The runtime expects:
 - text `id`
 - `specialist_id`
 - `bundle_toml`
@@ -233,71 +168,39 @@ Runtime currently expects:
 - `version_label`
 - `created_by`
 
-### telemetry signal persistence
-Runtime currently expects:
-- text `id`
-- `specialist_id`
-- `category`
-- `severity`
-- `surface`
-- `task_class`
-- `summary`
-- `evidence_refs` as JSON
-- `occurred_at`
+### Signal / proposal / growth persistence
+The runtime expects:
+- text IDs for signals, proposals, plans, lineage records, and promotion decisions
+- JSON fields where the Go side writes structured refs, freeze plans, rollback plans, metrics, or metadata
 
-### adaptation proposal persistence
-Runtime currently expects:
-- text `id`
-- `specialist_id`
-- `cluster_id` as nullable text
-- `surface`
-- `reason`
-- `requested_by`
-- `risk_level`
-- `requires_harness`
-- `requires_parent`
-- `rollback_required`
-- `status`
+## Verify contract
 
-### growth-plan persistence
-Runtime currently expects:
-- text `id`
-- `proposal_id`
-- `specialist_id`
-- `surface`
-- `reason`
-- `experiment_name`
-- `freeze_plan` as JSON
-- `rollback_plan` as JSON
-- `status`
-
----
-
-## verify expectations
-`cmd/verify` now expects to be able to:
-- compile the canonical slot bundle
-- encode it to TOML
-- attempt to persist the bundle version
-- run retrieval smoke checks
+`cmd/verify` is expected to:
+- load config
+- connect to Postgres
+- load specialist slots
+- compile the canonical bundle
+- encode the bundle to TOML
+- attempt durable bundle persistence
+- exercise retrieval
 - emit retrieval, routing, and execution signals
-- run SEAL review over those signals
-- attempt to persist SEAL proposals
-- run DEN planning from the first proposal
-- attempt to persist the resulting growth plan
+- run proposal generation over those signals
+- attempt growth-plan persistence
+- stage an ability-growth record
 
-`cmd/verify` now has two modes:
-- `-mode soft` for staged local bring-up, where optional persistence-path failures warn and continue
-- `-mode strict` for admission gates, where those same failures are fatal
+Verify modes:
+- `soft` warns on optional persistence-path failures and continues
+- `strict` treats those same failures as fatal
 
-CI and other gatekeeping paths should use strict mode.
-Soft mode is for local reconciliation work and should not be treated as proof that the runtime is fully migrated.
+CI and admission gates should use strict mode.
+Soft mode is for staged local bring-up only.
 
----
+## Maintenance rule
 
-## maintenance rule
-Whenever either of these changes:
-- SQL function/table shape
-- Go runtime DB call expectations
-- verify mode semantics for optional DB-backed paths
+Update this file whenever any of the following change:
+- runtime-facing SQL functions
+- runtime-facing table shape
+- identifier strategy
+- verify expectations
 
-this file should be updated in the same change set.
+If the runtime contract changed and this file did not, the patch is incomplete.
