@@ -28,6 +28,7 @@ type AbilityGrowthExperimentInput struct {
 	RequestedBy          string
 	ParentApprovedBy     string
 	HarnessVerifiedBy    string
+	SpecialistArtifactID string
 	Notes                string
 }
 
@@ -71,11 +72,12 @@ func (s *PostgresStore) CreateAbilityGrowthExperiment(ctx context.Context, in Ab
 			requested_by,
 			parent_approved_by,
 			harness_verified_by,
+			specialist_artifact_id,
 			notes
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),NULLIF($10,''),$11)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULLIF($9,''),NULLIF($10,''),NULLIF($11,''),$12)
 		RETURNING experiment_id::text`
 	var id string
-	if err := s.db.QueryRow(ctx, q, in.Namespace, in.SpecialistID, in.AbilityName, in.GapSummary, in.EvidenceSummary, in.PreferredSurface, in.Status, in.RequestedBy, in.ParentApprovedBy, in.HarnessVerifiedBy, in.Notes).Scan(&id); err != nil {
+	if err := s.db.QueryRow(ctx, q, in.Namespace, in.SpecialistID, in.AbilityName, in.GapSummary, in.EvidenceSummary, in.PreferredSurface, in.Status, in.RequestedBy, in.ParentApprovedBy, in.HarnessVerifiedBy, in.SpecialistArtifactID, in.Notes).Scan(&id); err != nil {
 		return "", fmt.Errorf("create ability growth experiment: %w", err)
 	}
 	return id, nil
