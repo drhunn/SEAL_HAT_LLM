@@ -9,6 +9,17 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-21 11:51:25 UTC — Tighten lifecycle verify checks and explicit preferred-unit planning (pending)
+**Summary:** Fixed the worst coherence gap by making verify check lifecycle/artifact invariants and by letting execution planning prefer a real target unit ID instead of only executor aliases.
+
+**Changes:**
+- Updated `sql/verify.sql` to check lifecycle/artifact invariants instead of only basic table existence.
+- Added verify checks for specialist-artifact tables, route-episode tables, artifact-ref columns, and the single-current-artifact index.
+- Added verify checks for one-current-artifact invariants and growth/artifact status alignment across candidate, current, and rolled-back artifacts.
+- Updated `internal/runtime/service.go` to add `PreferredUnitID` to the runtime task model and `TargetUnitID` to task review records.
+- Updated `internal/execution/service.go` so execution planning can prefer an explicit target unit ID and resolve its executor alias through the unit registry.
+- Updated `docs/implementation-status.md` to record lifecycle verify coverage and preferred-unit execution support.
+
 ## 2026-04-21 06:00:02 UTC — Add candidate artifact lifecycle helpers (#12)
 **Summary:** Added the first real current/candidate artifact separation so staged experiments point at distinct candidate artifacts instead of scribbling on the current artifact row.
 
