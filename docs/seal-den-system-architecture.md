@@ -11,10 +11,11 @@ It defines where each responsibility belongs in the runtime, how proposals shoul
 ## core framing
 In this repository:
 
+- the **parent** is a generalist and the long-term routing/orchestration layer
 - **SEAL** decides **when** the system should adapt and **how** adaptation should be governed
 - **DEN** decides **where** capacity should change and **when** structural expansion is justified because existing capacity is insufficient
 - the **harness** acts as the approving adult and experiment gatekeeper
-- the **parent** remains the constitutional governor
+- **slot governance** defines what is mutable, what is protected, and what requires review
 - **Postgres + pgvector** remain the durable memory, audit, and lineage plane
 
 This means the system should not jump directly from failure to growth.
@@ -27,6 +28,36 @@ It should move through a governed sequence:
 5. let DEN choose the smallest structural change that can address the persistent gap
 6. run a bounded experiment
 7. verify, promote, or roll back
+
+---
+
+## role separation
+
+### parent generalist
+The parent is the generalist.
+Its long-term job is to become a **learning routing/orchestration layer** that improves at deciding:
+- whether to handle a task itself
+- whether to route to a specialist
+- whether retrieval should happen first
+- whether multiple specialists or multimodal fusion are required
+- whether escalation, deferment, or refusal is correct
+
+The parent may learn how to route and orchestrate more effectively.
+It does **not** get to redefine governance, widen its own authority, or bypass slot constraints.
+
+### SEAL
+SEAL is the adaptation-decision layer.
+It decides whether the observed evidence justifies change.
+SEAL should prefer the smallest reversible fix first and escalate to structural adaptation only when the evidence says the current arrangement is insufficient.
+
+### DEN
+DEN is the structural change mechanism.
+It accepts an approved change problem and determines the smallest structural intervention that can address it.
+DEN should not act on its own without SEAL justification and harness approval.
+
+### harness and slot governance
+The harness enforces execution policy, approval gates, rollback, audit, and promotion rules.
+Slot governance defines what is mutable, what is operational, what is constitutional, and what requires review.
 
 ---
 
@@ -45,7 +76,21 @@ The execution plane handles live work:
 This plane should never directly self-modify durable structure.
 It should only emit signals and proposals.
 
-### 2. SEAL plane
+### 2. parent routing/orchestration plane
+This plane owns runtime coordination.
+It should evolve from explicit policy routing toward a learned orchestration layer.
+
+It answers:
+- should the parent handle this itself?
+- which specialist should receive the task?
+- is one specialist enough?
+- should retrieval happen before execution?
+- is multimodal fusion required?
+- what fallback path should exist?
+
+The parent’s routing quality should be measurable and improvable over time.
+
+### 3. SEAL plane
 The SEAL plane is the **adaptation governor**.
 It consumes signals such as:
 - postmortems
@@ -67,7 +112,7 @@ SEAL answers:
 
 SEAL emits **adaptation proposals**, not raw edits.
 
-### 3. DEN plane
+### 4. DEN plane
 The DEN plane is the **structural expansion mechanism**.
 It runs only after SEAL has justified adaptation and governance has approved the proposal.
 
@@ -83,7 +128,7 @@ DEN answers:
 
 DEN emits **growth plans** and bounded experiments.
 
-### 4. oversight plane
+### 5. oversight plane
 The oversight plane owns:
 - approval checks
 - constitutional vs operational boundaries
@@ -91,7 +136,7 @@ The oversight plane owns:
 - policy checks before durable changes
 - audit and lineage updates
 
-### 5. lineage plane
+### 6. lineage plane
 The lineage plane tracks:
 - parent and specialist ancestry
 - derived branches
@@ -107,7 +152,9 @@ The intended control loop is:
 ```text
 request
   ->
-runtime execution plane
+parent routing/orchestration
+  ->
+specialist execution plane
   ->
 telemetry + postmortem + eval + routing audit
   ->
@@ -129,13 +176,14 @@ The most important design rule is:
 **SEAL must prefer the smallest reversible fix.**
 
 Preferred adaptation order:
-1. slot patch
-2. prompt / skill / tool patch
-3. retrieval / memory patch
-4. adapter tuning
-5. new specialist
-6. specialist split
-7. larger structural expansion
+1. parent routing/orchestration improvement
+2. slot patch
+3. prompt / skill / tool patch
+4. retrieval / memory patch
+5. adapter tuning
+6. new specialist
+7. specialist split
+8. larger structural expansion
 
 The system should not use DEN as an excuse to add capacity casually.
 
@@ -229,6 +277,31 @@ Current state:
 
 ## recommended interfaces
 
+### parent routing/orchestration interface shape
+The parent should eventually produce a structured routing/orchestration decision rather than a raw executor string.
+
+A minimal shape should include:
+- chosen executor or executor set
+- confidence
+- fallback flag
+- review flag
+- rationale
+- retrieval-first flag
+- multimodal/fusion requirement
+
+A minimal service interface should look like:
+
+```go
+package routing
+
+type Service interface {
+    DecideTask(ctx context.Context, in Input) Decision
+}
+```
+
+The important part is not the exact method name.
+It is that the parent’s routing quality should become a measurable research surface rather than a permanent hard-coded switch.
+
 ### SEAL interface shape
 SEAL should work with three core concepts:
 - `Signal`
@@ -246,6 +319,7 @@ type Service interface {
 ```
 
 SEAL proposal surfaces should include:
+- `routing_patch`
 - `slot_patch`
 - `prompt_patch`
 - `retrieval_patch`
@@ -337,6 +411,20 @@ Stores harness or parent outcomes.
 
 ## runtime integration points
 
+### parent routing/orchestration
+The parent should emit telemetry such as:
+- wrong specialist chosen
+- unnecessary handoff
+- missed specialist handoff
+- retrieval should have happened first
+- fusion should have been used but was not
+- parent should have deferred or escalated but did not
+
+Current state:
+- routing telemetry helper exists
+- current runtime still uses explicit selection policy rather than learned routing
+- this remains a major research surface rather than a completed capability
+
 ### execution
 Execution should emit telemetry such as:
 - tool failure
@@ -349,17 +437,6 @@ Current state:
 - execution telemetry helper exists
 - verify path exercises it
 - broader runtime integration still needs to expand beyond verify
-
-### routing
-Routing should emit telemetry such as:
-- wrong specialist chosen
-- no viable route
-- repeated reroute
-- text-only fallback overuse
-
-Current state:
-- routing telemetry helper exists
-- verify path exercises it
 
 ### memory
 Memory should emit telemetry such as:
@@ -379,6 +456,16 @@ The existing `growth` package should remain the experiment execution layer while
 ---
 
 ## approval ladder
+
+### parent routing/orchestration improvements
+These include:
+- routing policy refinement
+- orchestration heuristics
+- confidence calibration
+- retrieval-before-routing policy
+
+These should be specialist- and runtime-observed, SEAL-scored, and harness-approved.
+They should be treated as smaller interventions than structural DEN changes.
 
 ### operational-only changes
 These include:
@@ -450,6 +537,7 @@ Still needed:
 - durable oversight approval path
 - richer lineage updates during growth execution
 - tighter runtime integration beyond verify-only exercise
+- learned parent routing/orchestration in shadow mode
 
 ### milestone 2
 **non-neural governed DEN growth exists**
@@ -468,6 +556,7 @@ Deliverables:
 **neural growth surfaces become real**
 
 Deliverables:
+- parent routing/orchestration learns from route episodes and eval outcomes
 - adapter experiments
 - freeze-plan enforcement
 - promotion decisions based on evals
@@ -479,22 +568,24 @@ Deliverables:
 The immediate next step is no longer to add the first scaffolds.
 Those now exist.
 
-The next step is to stabilize and execute the current loop against a migrated database:
+The next step is to stabilize and execute the current loop against a migrated database and then turn the parent into a measurable routing/orchestration surface:
 - apply the SEAL/DEN migration
 - run `cmd/verify`
 - confirm durable bundle, signal, proposal, and growth-plan persistence
 - wire oversight and lineage more deeply into the live runtime path
+- define route episodes, routing metrics, and a shadow-mode parent router
 
 ---
 
 ## summary
 The system architecture should treat:
+- the **parent** as the generalist and long-term learned routing/orchestration layer
 - **SEAL** as the closed-loop adaptation governor
 - **DEN** as the constrained capacity allocator and expansion mechanism
 - the **harness** as the approving adult
-- the **parent** as the constitutional sovereign
+- **slot governance** as the hard boundary on mutability and review
 - **Postgres + pgvector** as the durable evidence, memory, and lineage plane
 - **specialists** as bounded execution surfaces
 
 The system should not become more capable by accident.
-It should become more capable through governed evidence, bounded experiments, and reversible growth.
+It should become more capable through governed evidence, bounded experiments, better routing/orchestration, and reversible growth.
