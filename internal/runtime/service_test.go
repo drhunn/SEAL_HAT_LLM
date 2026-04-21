@@ -50,19 +50,19 @@ func TestClassifyIncidentOnExecutionError(t *testing.T) {
 	}
 }
 
-func TestClassifyIncidentOnParentReview(t *testing.T) {
+func TestClassifyIncidentDoesNotTriggerOnParentReviewOnly(t *testing.T) {
 	task := Task{Summary: "review task"}
 	decision := routing.Decision{ChosenTarget: "Multimodal-Evidence-Fusion-Specialist-01", NeedsParentView: true}
-	result := execution.Result{Plan: execution.Plan{ChosenExecutor: "Multimodal-Evidence-Fusion-Specialist-01"}}
-	incident, ok := classifyIncident(task, decision, result, nil, nil)
+	result := execution.Result{Plan: execution.Plan{ChosenExecutor: "Multimodal-Evidence-Fusion-Specialist-01", NeedsParentReview: true}}
+	if _, ok := classifyIncident(task, decision, result, nil, nil); ok {
+		t.Fatalf("did not expect incident for review-only outcome")
+	}
+	review, ok := classifyTaskReview(task, decision, result)
 	if !ok {
-		t.Fatalf("expected incident")
+		t.Fatalf("expected task review")
 	}
-	if !incident.RequiresParentReview {
-		t.Fatalf("expected parent review requirement")
-	}
-	if incident.FailureClassification[0] != "routing failure" {
-		t.Fatalf("unexpected failure classification: %+v", incident.FailureClassification)
+	if review.Reason == "" {
+		t.Fatalf("expected review reason")
 	}
 }
 
