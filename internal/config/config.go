@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
@@ -22,6 +24,7 @@ type AppConfig struct {
 		Namespace                 string `toml:"namespace"`
 		SlotsRoot                 string `toml:"slots_root"`
 		ConfigRoot                string `toml:"config_root"`
+		StoreMode                 string `toml:"store_mode"`
 		RequestTimeoutSeconds     int    `toml:"request_timeout_seconds"`
 		DefaultPrimaryModality    string `toml:"default_primary_modality"`
 		AllowTextOnlyFallback     bool   `toml:"allow_text_only_fallback"`
@@ -30,6 +33,13 @@ type AppConfig struct {
 		TaskInboxDir              string `toml:"task_inbox_dir"`
 		TaskPollIntervalSeconds   int    `toml:"task_poll_interval_seconds"`
 	} `toml:"runtime"`
+	EmbeddedPostgres struct {
+		DataDir      string `toml:"data_dir"`
+		Port         int    `toml:"port"`
+		User         string `toml:"user"`
+		DatabaseName string `toml:"database_name"`
+		BinDir       string `toml:"bin_dir"`
+	} `toml:"embedded_postgres"`
 	Harness struct {
 		AutoCreatePostmortems bool   `toml:"auto_create_postmortems"`
 		AutoUpdateHealth      bool   `toml:"auto_update_health"`
@@ -49,9 +59,6 @@ func Load(path string) (*AppConfig, error) {
 		return nil, fmt.Errorf("decode config: %w", err)
 	}
 
-	if cfg.Database.DSN == "" {
-		return nil, fmt.Errorf("database.dsn is required")
-	}
 	if cfg.Runtime.SpecialistID == "" {
 		return nil, fmt.Errorf("runtime.specialist_id is required")
 	}
@@ -60,6 +67,12 @@ func Load(path string) (*AppConfig, error) {
 	}
 	if cfg.Runtime.SlotsRoot == "" {
 		cfg.Runtime.SlotsRoot = "./specialists"
+	}
+	if cfg.Runtime.ConfigRoot == "" {
+		cfg.Runtime.ConfigRoot = "./config"
+	}
+	if strings.TrimSpace(cfg.Runtime.StoreMode) == "" {
+		cfg.Runtime.StoreMode = "shared_dsn"
 	}
 	if cfg.Harness.DefaultCreatedBy == "" {
 		cfg.Harness.DefaultCreatedBy = "harness:runtime"
@@ -75,6 +88,28 @@ func Load(path string) (*AppConfig, error) {
 	}
 	if cfg.Runtime.EnableTaskInbox && cfg.Runtime.TaskInboxDir == "" {
 		cfg.Runtime.TaskInboxDir = "./artifacts/task_inbox"
+	}
+
+	switch strings.TrimSpace(cfg.Runtime.StoreMode) {
+	case "shared_dsn":
+		if cfg.Database.DSN == "" {
+			return nil, fmt.Errorf("database.dsn is required for runtime.store_mode=shared_dsn")
+		}
+	case "embedded_postgres":
+		if cfg.EmbeddedPostgres.DataDir == "" {
+			cfg.EmbeddedPostgres.DataDir = filepath.Join("./artifacts/embedded_postgres", cfg.Runtime.SpecialistID)
+		}
+		if cfg.EmbeddedPostgres.Port <= 0 {
+			cfg.EmbeddedPostgres.Port = 55432
+		}
+		if cfg.EmbeddedPostgres.User == "" {
+			cfg.EmbeddedPostgres.User = "postgres"
+		}
+		if cfg.EmbeddedPostgres.DatabaseName == "" {
+			cfg.EmbeddedPostgres.DatabaseName = "postgres"
+		}
+	default:
+		return nil, fmt.Errorf("unsupported runtime.store_mode %q", cfg.Runtime.StoreMode)
 	}
 
 	return &cfg, nil
