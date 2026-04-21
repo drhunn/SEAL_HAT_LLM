@@ -30,7 +30,8 @@ The Go side already has:
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
 - an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
-- compatibility routing/execution target fields that now carry **unit-target metadata** alongside the existing executor names
+- an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
+- routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - initial specialist-artifact persistence support for the current local model unit on startup
@@ -78,7 +79,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - growth-plan staging
 - multimodal-aware planning
 - model-unit bootstrap ownership cleanup without per-unit embedded storage yet
-- compatibility unit-target routing layered on top of executor-name dispatch
+- initial unit-registry resolution layered on top of the existing executor policy rather than full multi-unit routing
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - specialist-artifact persistence for the current local model unit rather than a full DEN-produced bundle pipeline
 - artifact-linked growth staging that still points at the current startup-persisted artifact rather than a richer lifecycle-managed bundle
@@ -101,7 +102,7 @@ These are still outside the current runtime:
 - per-model harness runtime units across parent and specialists
 - per-model embedded Postgres deployment
 - explicit cross-model replication or governed sharing between model-local stores
-- routing that targets real model units instead of compatibility-mapped executor names
+- routing that targets real model units end to end without the old executor policy as the decision source
 - a shared RPC/IPC tool plane with reusable external tool executables
 - production multi-specialist orchestration
 - production tool broker integration across multiple harnesses
@@ -121,7 +122,7 @@ The repo is most likely to fail when:
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
-- compatibility unit-target mapping is mistaken for real multi-unit orchestration
+- initial unit-registry resolution is mistaken for real multi-unit orchestration
 - initial specialist-artifact persistence is mistaken for a full specialist lifecycle pipeline
 - artifact-linked growth staging is mistaken for real bundle production or lifecycle promotion
 
