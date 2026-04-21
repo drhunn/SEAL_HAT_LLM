@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"strings"
 
+	"github.com/drhunn/SEAL_HAT_LLM/internal/executors"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
@@ -47,48 +47,24 @@ func NewService(logger *slog.Logger, hosts *modelhost.Registry) *Service {
 }
 
 func (s *Service) Plan(ctx context.Context, req Request) Plan {
+	selection := executors.Select(req.PrimaryModality, req.SecondaryModalities, req.CrossModalGroundingRequired, req.AllowTextOnlyFallback)
 	plan := Plan{
-		ExecutionMode:  "unimodal",
-		ChosenExecutor: "Parent-Generalist-30B",
-		Notes:          "default execution path",
+		ExecutionMode:        "unimodal",
+		ChosenExecutor:       selection.Executor.String(),
+		RequiresFusion:       selection.RequiresFusion,
+		UsesTextOnlyFallback: selection.WasFallback,
+		NeedsParentReview:    selection.NeedsParentView,
+		Notes:                notesForSelection(selection.Executor, selection.RequiresFusion, selection.WasFallback),
 	}
 
-	if req.PreferredExecutor != "" {
+	if req.PreferredExecutor != "" && !selection.RequiresFusion && (req.PrimaryModality == modality.Text || req.PrimaryModality == modality.Unknown) {
 		plan.ChosenExecutor = req.PreferredExecutor
 		plan.Notes = "preferred executor requested"
 	}
 
-	if req.CrossModalGroundingRequired || len(req.SecondaryModalities) > 0 || req.PrimaryModality == modality.Multimodal {
+	if selection.RequiresFusion {
 		plan.ExecutionMode = "multimodal_fusion"
-		plan.ChosenExecutor = "Multimodal-Evidence-Fusion-Specialist-01"
-		plan.RequiresFusion = true
-		plan.Notes = "cross-modal grounding required"
-	} else {
-		switch req.PrimaryModality {
-		case modality.Image:
-			plan.ChosenExecutor = "Image-Analysis-Specialist-01"
-			plan.Notes = "image-first execution path"
-		case modality.Audio:
-			plan.ChosenExecutor = "Audio-Transcription-Specialist-01"
-			plan.Notes = "audio-first execution path"
-		case modality.Video:
-			plan.ChosenExecutor = "Video-Understanding-Specialist-01"
-			plan.Notes = "video-first execution path"
-		case modality.Document:
-			plan.ChosenExecutor = "Document-Layout-OCR-Specialist-01"
-			plan.Notes = "document-first execution path"
-		case modality.Text, modality.Unknown:
-			plan.ChosenExecutor = "Parent-Generalist-30B"
-			plan.Notes = "text-first execution path"
-		}
 	}
-
-	if req.PrimaryModality == modality.Unknown && req.AllowTextOnlyFallback {
-		plan.ChosenExecutor = "Parent-Generalist-30B"
-		plan.UsesTextOnlyFallback = true
-		plan.Notes = "unknown modality fell back to text-first execution"
-	}
-
 	if req.CrossModalGroundingRequired && len(req.AssetRefs) == 0 {
 		plan.NeedsParentReview = true
 		plan.Notes = "cross-modal request without asset refs should be reviewed by parent"
@@ -148,11 +124,32 @@ func SignalsForExecution(specialistID string, req Request, result Result, execEr
 	if result.Plan.NeedsParentReview {
 		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
 	}
-	if result.Plan.RequiresFusion && !strings.Contains(result.Plan.ChosenExecutor, "Fusion") {
+	if result.Plan.RequiresFusion && result.Plan.ChosenExecutor != executors.MultimodalFusion.String() {
 		signals = append(signals, collector.NewSignal(specialistID, "execution", "multimodal", req.TaskClass, "fusion-required execution was not assigned to fusion executor", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
 	}
 	if !result.HostResult.Handled {
 		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "host did not handle execution request", telemetry.SeverityHigh, result.HostResult.HostName, result.Plan.ChosenExecutor))
 	}
 	return signals
+}
+
+func notesForSelection(executor executors.Name, requiresFusion, usedFallback bool) string {
+	if requiresFusion {
+		return "cross-modal grounding required"
+	}
+	if usedFallback {
+		return "unknown modality fell back to text-first execution"
+	}
+	switch executor {
+	case executors.ImageAnalysis:
+		return "image-first execution path"
+	case executors.AudioTranscription:
+		return "audio-first execution path"
+	case executors.VideoUnderstanding:
+		return "video-first execution path"
+	case executors.DocumentLayoutOCR:
+		return "document-first execution path"
+	default:
+		return "text-first execution path"
+	}
 }
