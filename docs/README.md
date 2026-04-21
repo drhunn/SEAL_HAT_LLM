@@ -20,6 +20,7 @@ These documents explain the intended shape of the system:
 - `context-window-strategy.md`
 - `multimodal-architecture.md`
 - `seal-den-system-architecture.md`
+- `parent-routing-orchestration-strategy.md`
 - `den-freeze-policy.md`
 - `dynamic-architecture-strategy.md`
 - `ability-first-growth-strategy.md`
