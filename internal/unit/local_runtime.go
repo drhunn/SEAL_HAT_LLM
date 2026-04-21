@@ -35,7 +35,11 @@ type LocalRuntime struct {
 	closeStore func()
 }
 
-func NewLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *slog.Logger) (*LocalRuntime, error) {
+func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, logger *slog.Logger) (*LocalRuntime, error) {
+	return newLocalRuntime(spec, cfg, database, logger, nil)
+}
+
+func NewBootstrappedLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *slog.Logger) (*LocalRuntime, error) {
 	if err := spec.Validate(); err != nil {
 		return nil, err
 	}
@@ -53,14 +57,30 @@ func NewLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logg
 	if storeHandle == nil || storeHandle.Pool == nil {
 		return nil, fmt.Errorf("store bootstrap returned no database pool")
 	}
+	return newLocalRuntime(spec, cfg, storeHandle.Pool, logger, storeHandle.Close)
+}
+
+func newLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, logger *slog.Logger, closeStore func()) (*LocalRuntime, error) {
+	if err := spec.Validate(); err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("config is required")
+	}
+	if database == nil {
+		return nil, fmt.Errorf("database pool is required")
+	}
+	if logger == nil {
+		return nil, fmt.Errorf("logger is required")
+	}
 
 	registry := NewRegistry(BuiltinSpecs(spec)...)
-	store := memory.NewPostgresStore(storeHandle.Pool, logger)
+	store := memory.NewPostgresStore(database, logger)
 	slotLoader := slots.NewFilesystemLoader(spec.SlotsRoot)
 	slotSyncService := slotsync.NewService(slotLoader, logger)
 	pmService := postmortem.NewService(store, logger, cfg.Harness.DefaultCreatedBy)
 	evalService := evals.NewService(store, logger)
-	lifecycleService := lifecycle.NewService(storeHandle.Pool, logger)
+	lifecycleService := lifecycle.NewService(database, logger)
 	growthService := growth.NewService(store, logger)
 	recoveryPlanner := workflow.NewDefaultRecoveryPlanner()
 	harnessService := harness.NewService(store, pmService, evalService, lifecycleService, recoveryPlanner, logger, cfg)
@@ -72,13 +92,13 @@ func NewLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logg
 	return &LocalRuntime{
 		Spec:       spec,
 		Registry:   registry,
-		Database:   storeHandle.Pool,
+		Database:   database,
 		Store:      store,
 		Harness:    harnessService,
 		Routing:    routingService,
 		Execution:  executionService,
 		Runtime:    runtimeService,
-		closeStore: storeHandle.Close,
+		closeStore: closeStore,
 	}, nil
 }
 
