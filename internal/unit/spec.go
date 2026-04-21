@@ -18,7 +18,7 @@ const (
 type StoreMode string
 
 const (
-	StoreModeSharedDSN       StoreMode = "shared_dsn"
+	StoreModeSharedDSN        StoreMode = "shared_dsn"
 	StoreModeEmbeddedPostgres StoreMode = "embedded_postgres"
 )
 
@@ -31,6 +31,7 @@ const (
 
 type Spec struct {
 	UnitID        string
+	ExecutorName  string
 	Role          Role
 	ModelRef      string
 	SpecialistID  string
@@ -54,6 +55,7 @@ func SpecFromConfig(cfg *config.AppConfig) (Spec, error) {
 
 	spec := Spec{
 		UnitID:        specialistID,
+		ExecutorName:  specialistID,
 		Role:          role,
 		ModelRef:      specialistID,
 		SpecialistID:  specialistID,
@@ -72,6 +74,9 @@ func SpecFromConfig(cfg *config.AppConfig) (Spec, error) {
 func (s Spec) Validate() error {
 	if strings.TrimSpace(s.UnitID) == "" {
 		return fmt.Errorf("unit id is required")
+	}
+	if strings.TrimSpace(s.ExecutorName) == "" {
+		return fmt.Errorf("executor name is required")
 	}
 	if strings.TrimSpace(s.SpecialistID) == "" {
 		return fmt.Errorf("specialist id is required")
