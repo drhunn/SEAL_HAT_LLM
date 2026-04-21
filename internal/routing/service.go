@@ -17,6 +17,7 @@ type Input struct {
 	PrimaryModality             modality.Type
 	SecondaryModalities         []modality.Type
 	CrossModalGroundingRequired bool
+	PreferredUnitID             string
 }
 
 type Decision struct {
@@ -74,6 +75,15 @@ func (s *Service) DecideTask(ctx context.Context, in Input) Decision {
 		RequiresFusion:  selection.RequiresFusion,
 	}
 
+	if in.PreferredUnitID != "" && !selection.RequiresFusion && (primary == modality.Text || primary == modality.Unknown) {
+		if preferredTarget, ok := s.resolveUnitTarget(in.PreferredUnitID); ok {
+			decision.ChosenTarget = preferredTarget.ExecutorName
+			decision.TargetUnitID = preferredTarget.UnitID
+			decision.TargetRole = preferredTarget.Role
+			decision.TargetModelRef = preferredTarget.ModelRef
+		}
+	}
+
 	s.logger.InfoContext(ctx, "routing decision",
 		"task_class", decision.TaskClass,
 		"primary_modality", decision.PrimaryModality,
@@ -98,6 +108,20 @@ func (s *Service) resolveTarget(executorName string) unitref.Target {
 		}
 	}
 	return unitref.ForExecutor(executorName)
+}
+
+func (s *Service) resolveUnitTarget(unitID string) (unitref.Target, bool) {
+	if s != nil && s.registry != nil {
+		if spec, ok := s.registry.ResolveUnit(unitID); ok {
+			return unitref.Target{
+				UnitID:       spec.UnitID,
+				Role:         spec.Role,
+				ModelRef:     spec.ModelRef,
+				ExecutorName: spec.ExecutorName,
+			}, true
+		}
+	}
+	return unitref.Target{}, false
 }
 
 func SignalsForDecision(specialistID string, in Input, decision Decision, collector *telemetry.Collector) []telemetry.Signal {
