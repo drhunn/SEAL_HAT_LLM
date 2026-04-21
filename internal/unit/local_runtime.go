@@ -24,16 +24,43 @@ import (
 )
 
 type LocalRuntime struct {
-	Spec      Spec
-	Registry  *Registry
-	Store     *memory.PostgresStore
-	Harness   *harness.Service
-	Routing   *routing.Service
-	Execution *execution.Service
-	Runtime   *runtime.Service
+	Spec       Spec
+	Registry   *Registry
+	Database   *pgxpool.Pool
+	Store      *memory.PostgresStore
+	Harness    *harness.Service
+	Routing    *routing.Service
+	Execution  *execution.Service
+	Runtime    *runtime.Service
+	closeStore func()
 }
 
 func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, logger *slog.Logger) (*LocalRuntime, error) {
+	return newLocalRuntime(spec, cfg, database, logger, nil)
+}
+
+func NewBootstrappedLocalRuntime(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *slog.Logger) (*LocalRuntime, error) {
+	if err := spec.Validate(); err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("config is required")
+	}
+	if logger == nil {
+		return nil, fmt.Errorf("logger is required")
+	}
+
+	storeHandle, err := OpenStore(ctx, spec, cfg, logger)
+	if err != nil {
+		return nil, err
+	}
+	if storeHandle == nil || storeHandle.Pool == nil {
+		return nil, fmt.Errorf("store bootstrap returned no database pool")
+	}
+	return newLocalRuntime(spec, cfg, storeHandle.Pool, logger, storeHandle.Close)
+}
+
+func newLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, logger *slog.Logger, closeStore func()) (*LocalRuntime, error) {
 	if err := spec.Validate(); err != nil {
 		return nil, err
 	}
@@ -63,13 +90,15 @@ func NewLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, l
 	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
 
 	return &LocalRuntime{
-		Spec:      spec,
-		Registry:  registry,
-		Store:     store,
-		Harness:   harnessService,
-		Routing:   routingService,
-		Execution: executionService,
-		Runtime:   runtimeService,
+		Spec:       spec,
+		Registry:   registry,
+		Database:   database,
+		Store:      store,
+		Harness:    harnessService,
+		Routing:    routingService,
+		Execution:  executionService,
+		Runtime:    runtimeService,
+		closeStore: closeStore,
 	}, nil
 }
 
@@ -78,6 +107,15 @@ func (u *LocalRuntime) Start(ctx context.Context) error {
 		return fmt.Errorf("local runtime is not initialized")
 	}
 	return u.Runtime.Start(ctx)
+}
+
+func (u *LocalRuntime) Close() {
+	if u == nil {
+		return
+	}
+	if u.closeStore != nil {
+		u.closeStore()
+	}
 }
 
 func hostPrefix(spec Spec) string {
