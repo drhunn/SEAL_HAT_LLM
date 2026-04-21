@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 )
 
@@ -22,7 +24,7 @@ func TestTaskInboxClaimNextAndMarkProcessed(t *testing.T) {
 		t.Fatalf("EnsureDirs() error = %v", err)
 	}
 
-	payload := `{"summary":"alpha task","class":"analysis","primary_modality":"text","prompt":"hello"}`
+	payload := `{"version":"seal_hat_llm.runtime_task.v1","summary":"alpha task","class":"analysis","primary_modality":"text","prompt":"hello"}`
 	if err := os.WriteFile(filepath.Join(root, "001-alpha.json"), []byte(payload), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
@@ -43,11 +45,24 @@ func TestTaskInboxClaimNextAndMarkProcessed(t *testing.T) {
 	if queued.Task.PrimaryModality != modality.Text {
 		t.Fatalf("unexpected primary modality: %q", queued.Task.PrimaryModality)
 	}
-	if err := inbox.MarkProcessed(queued); err != nil {
+	result := &TaskResult{ExecutionResult: execution.Result{Plan: execution.Plan{ChosenExecutor: "Parent-Generalist-30B"}}}
+	if err := inbox.MarkProcessed(queued, result); err != nil {
 		t.Fatalf("MarkProcessed() error = %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "processed", "001-alpha.json")); err != nil {
+	archivePath := filepath.Join(root, "processed", "001-alpha.json")
+	if _, err := os.Stat(archivePath); err != nil {
 		t.Fatalf("expected processed archive file: %v", err)
+	}
+	artifactBytes, err := os.ReadFile(archivePath + ".result.json")
+	if err != nil {
+		t.Fatalf("expected processed result artifact: %v", err)
+	}
+	var artifact TaskArtifact
+	if err := json.Unmarshal(artifactBytes, &artifact); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if artifact.Status != "processed" {
+		t.Fatalf("unexpected artifact status: %q", artifact.Status)
 	}
 }
 
@@ -59,7 +74,7 @@ func TestTaskInboxMarkFailedWritesErrorNote(t *testing.T) {
 		t.Fatalf("EnsureDirs() error = %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(root, "002-bad.json"), []byte(`{not-json}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "002-bad.json"), []byte(`{"version":"wrong","summary":"bad"}`), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -68,7 +83,7 @@ func TestTaskInboxMarkFailedWritesErrorNote(t *testing.T) {
 		t.Fatalf("expected ClaimNext() error")
 	}
 	if queued == nil {
-		t.Fatalf("expected queued task on decode failure")
+		t.Fatalf("expected queued task on validation failure")
 	}
 	if err := inbox.MarkFailed(queued, err); err != nil {
 		t.Fatalf("MarkFailed() error = %v", err)
@@ -82,7 +97,18 @@ func TestTaskInboxMarkFailedWritesErrorNote(t *testing.T) {
 	if readErr != nil {
 		t.Fatalf("expected error note: %v", readErr)
 	}
-	if !strings.Contains(string(errorNote), "decode task file") {
+	if !strings.Contains(string(errorNote), "version must be") {
 		t.Fatalf("unexpected error note: %s", string(errorNote))
+	}
+	artifactBytes, readErr := os.ReadFile(failedJSON + ".result.json")
+	if readErr != nil {
+		t.Fatalf("expected failed result artifact: %v", readErr)
+	}
+	var artifact TaskArtifact
+	if err := json.Unmarshal(artifactBytes, &artifact); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if artifact.Status != "failed" {
+		t.Fatalf("unexpected artifact status: %q", artifact.Status)
 	}
 }
