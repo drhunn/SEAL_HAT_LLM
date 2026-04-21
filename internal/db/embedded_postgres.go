@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -28,6 +30,8 @@ type EmbeddedPostgresHandle struct {
 
 var commandContext = exec.CommandContext
 var openPool = Open
+var runEmbeddedCommand = runCommand
+var embeddedPostgresStatus = postgresRunning
 
 func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*EmbeddedPostgresHandle, error) {
 	dataDir := strings.TrimSpace(cfg.DataDir)
@@ -49,18 +53,29 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 		return nil, fmt.Errorf("create embedded postgres data dir: %w", err)
 	}
 
+	releaseOwnership, err := acquireEmbeddedPostgresOwnership(dataDir)
+	if err != nil {
+		return nil, err
+	}
+	releaseIfNeeded := releaseOwnership
+	defer func() {
+		if releaseIfNeeded != nil {
+			_ = releaseIfNeeded()
+		}
+	}()
+
 	initdbPath := binaryPath(cfg.BinDir, "initdb")
 	pgCtlPath := binaryPath(cfg.BinDir, "pg_ctl")
 	initialized := fileExists(filepath.Join(dataDir, "PG_VERSION"))
 	if !initialized {
-		if err := runCommand(ctx, initdbPath, "-D", dataDir, "-U", user, "-A", "trust"); err != nil {
+		if err := runEmbeddedCommand(ctx, initdbPath, "-D", dataDir, "-U", user, "-A", "trust"); err != nil {
 			return nil, fmt.Errorf("initdb: %w", err)
 		}
 	}
 
 	startedHere := false
-	if !postgresRunning(ctx, pgCtlPath, dataDir) {
-		if err := runCommand(ctx, pgCtlPath, "-D", dataDir, "-o", postgresOptions(cfg.Port), "-w", "start"); err != nil {
+	if !embeddedPostgresStatus(ctx, pgCtlPath, dataDir) {
+		if err := runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-o", postgresOptions(cfg.Port), "-w", "start"); err != nil {
 			return nil, fmt.Errorf("start embedded postgres: %w", err)
 		}
 		startedHere = true
@@ -70,22 +85,60 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 	pool, err := openPool(ctx, dsn)
 	if err != nil {
 		if startedHere {
-			_ = runCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 		}
 		return nil, fmt.Errorf("open embedded postgres pool: %w", err)
 	}
 
+	var stopOnce sync.Once
+	var stopErr error
 	stop := func() error {
-		if pool != nil {
-			pool.Close()
-		}
-		if !startedHere {
-			return nil
-		}
-		return runCommand(context.Background(), pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+		stopOnce.Do(func() {
+			if pool != nil {
+				pool.Close()
+			}
+			if startedHere {
+				stopErr = runEmbeddedCommand(context.Background(), pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+			}
+			if releaseOwnership != nil {
+				if err := releaseOwnership(); stopErr == nil && err != nil {
+					stopErr = err
+				}
+				releaseOwnership = nil
+			}
+		})
+		return stopErr
 	}
 
+	releaseIfNeeded = nil
 	return &EmbeddedPostgresHandle{Pool: pool, DSN: dsn, Stop: stop}, nil
+}
+
+func acquireEmbeddedPostgresOwnership(dataDir string) (func() error, error) {
+	lockPath := filepath.Join(dataDir, ".embedded_postgres.lock")
+	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		if os.IsExist(err) {
+			return nil, fmt.Errorf("embedded postgres data dir %q is already in use", dataDir)
+		}
+		return nil, fmt.Errorf("create embedded postgres lock: %w", err)
+	}
+	metadata := fmt.Sprintf("pid=%d\ncreated_at=%s\n", os.Getpid(), time.Now().UTC().Format(time.RFC3339Nano))
+	if _, err := lockFile.WriteString(metadata); err != nil {
+		_ = lockFile.Close()
+		_ = os.Remove(lockPath)
+		return nil, fmt.Errorf("write embedded postgres lock: %w", err)
+	}
+	if err := lockFile.Close(); err != nil {
+		_ = os.Remove(lockPath)
+		return nil, fmt.Errorf("close embedded postgres lock: %w", err)
+	}
+	return func() error {
+		if err := os.Remove(lockPath); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove embedded postgres lock: %w", err)
+		}
+		return nil
+	}, nil
 }
 
 func runCommand(ctx context.Context, name string, args ...string) error {
