@@ -9,6 +9,16 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-21 14:12:41 UTC — Carry preferred unit ids through runtime task construction and add direct hook coverage (pending)
+**Summary:** Pushed explicit preferred unit ids farther into the live runtime by wiring them into startup-task and task-inbox construction, and added direct tests for preferred-unit execution planning and oversight artifact-event hooks.
+
+**Changes:**
+- Updated `internal/runtime/bootstrap.go` so the startup task now sets `PreferredUnitID` to the current runtime specialist.
+- Updated `internal/runtime/task_inbox.go` so inbox-submitted task JSON can carry `preferred_unit_id` and preserve it in the runtime task object.
+- Updated `internal/execution/service_test.go` to match the unit-registry constructor shape and to add direct preferred-unit execution planning coverage.
+- Added `internal/oversight/service_test.go` with direct promotion/rollback artifact-event hook coverage.
+- Updated `docs/implementation-status.md` to record the new preferred-unit task construction paths and direct hook coverage.
+
 ## 2026-04-21 11:51:25 UTC — Tighten lifecycle verify checks and explicit preferred-unit planning (pending)
 **Summary:** Fixed the worst coherence gap by making verify check lifecycle/artifact invariants and by letting execution planning prefer a real target unit ID instead of only executor aliases.
 
