@@ -113,6 +113,7 @@ The script applies:
 8. `sql/20260421_route_episodes.sql`
 9. `sql/20260421_specialist_artifacts.sql`
 10. `sql/20260421_ability_growth_artifact_refs.sql`
+11. `sql/20260421_specialist_artifact_events.sql`
 
 ### 2. Run verification
 - soft local bring-up: `make verify`
