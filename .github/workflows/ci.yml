@@ -33,7 +33,7 @@ jobs:
       - name: Bootstrap verify database
         env:
           PGPASSWORD: postgres
-        run: ./scripts/bootstrap_verify_db.sh "postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable"
+        run: bash ./scripts/bootstrap_verify_db.sh "postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable"
       - name: Go build
         run: go build ./...
       - name: Go test
