@@ -10,14 +10,16 @@ Each entry includes:
 - the concrete files or behaviors affected
 
 ## 2026-04-21 22:07:11 UTC — Harden embedded Postgres ownership and shutdown behavior (pending)
-**Summary:** Hardened the initial embedded Postgres path so it has explicit ownership locking, idempotent stop behavior, and cleanup on failed startup instead of just a naive start/stop wrapper.
+**Summary:** Hardened the initial embedded Postgres path so it has explicit ownership locking, stale-lock reclaim, readiness ping checks, idempotent stop behavior, and cleanup on failed startup instead of just a naive start/stop wrapper.
 
 **Changes:**
 - Updated `internal/db/embedded_postgres.go` to add exclusive data-dir ownership locking.
+- Updated `internal/db/embedded_postgres.go` to reclaim stale lock files when the local server is down and the lock is old enough.
+- Updated `internal/db/embedded_postgres.go` to ping the opened pool before declaring the embedded store ready.
 - Updated `internal/db/embedded_postgres.go` to make `Stop()` idempotent.
-- Updated `internal/db/embedded_postgres.go` so failed pool-open paths stop the local server they started and release the ownership lock.
-- Added `internal/db/embedded_postgres_test.go` covering second-owner rejection, idempotent stop, and cleanup on failed startup.
-- Updated `docs/implementation-status.md` to record ownership locking, idempotent stop behavior, and the remaining lifecycle gap.
+- Updated `internal/db/embedded_postgres.go` so failed pool-open and failed ping paths stop the local server they started and release the ownership lock.
+- Added `internal/db/embedded_postgres_test.go` covering second-owner rejection, stale-lock reclaim, fresh-lock rejection, idempotent stop, and startup cleanup on failed pool open / failed ping.
+- Updated `docs/implementation-status.md` to record stale-lock reclaim, readiness checks, idempotent stop behavior, and the remaining lifecycle gap.
 
 ## 2026-04-21 19:31:44 UTC — Add an initial embedded Postgres bootstrap path and switch the harness entrypoint to bootstrapped runtime startup (pending)
 **Summary:** Cut the next real store-boundary slice by making store mode configurable, adding an initial embedded Postgres bootstrap path, and switching the harness entrypoint to the bootstrapped local-runtime path instead of opening the database itself.
