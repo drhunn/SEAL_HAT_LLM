@@ -8,7 +8,7 @@ SEAL_HAT_LLM is a working scaffold.
 It is not a production runtime.
 
 The repo already has enough real code to support verification, bounded task processing, canonical slot compilation, Postgres-backed persistence, and Python dataset generation.
-It does not yet have a full live specialist system, per-model harness/runtime units, per-model embedded Postgres deployment, a shared RPC/IPC tool plane, or production growth machinery.
+It does not yet have a full live specialist system, per-model harness/runtime units, a mature per-model embedded Postgres lifecycle, a shared RPC/IPC tool plane, or production growth machinery.
 
 ## Implemented now
 
@@ -29,8 +29,11 @@ The Go side already has:
 - DEN growth-plan generation scaffolding
 - lifecycle, oversight, and lineage scaffolding
 - `cmd/verify` as a real admission path
-- an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit** while still using the current shared DSN mode
-- an explicit unit-owned store bootstrap abstraction with a bootstrapped local-runtime constructor for `shared_dsn` mode and an explicit `embedded_postgres` not-yet-implemented boundary
+- an initial `internal/unit` abstraction and local-runtime bootstrap path that now builds the runtime as a **local model unit**
+- an explicit unit-owned store bootstrap abstraction with:
+  - `shared_dsn` bootstrap support
+  - an initial actual `embedded_postgres` bootstrap path using local PostgreSQL binaries
+  - a bootstrapped local-runtime constructor now used by the main harness entrypoint
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
@@ -42,7 +45,7 @@ The Go side already has:
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, and unit-owned store bootstrap mode selection
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, and unit spec store-mode derivation
 
 ### SQL layer
 The SQL side already has:
@@ -88,12 +91,12 @@ These paths exist, but they are intentionally small and not yet broad production
 - telemetry-driven proposal generation
 - growth-plan staging
 - multimodal-aware planning
-- model-unit bootstrap ownership cleanup without per-unit embedded storage yet
+- model-unit bootstrap ownership cleanup with store bootstrap abstraction now in place, but without a mature embedded-store lifecycle yet
 - initial unit-registry resolution layered on top of the existing executor policy rather than full multi-unit routing
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - current/candidate artifact separation with candidate rows created during growth staging
 - artifact lifecycle history through event records plus narrow promotion/rollback helpers, rather than a full lifecycle state engine
-- unit-owned store bootstrap abstraction with the current harness entrypoint still using the legacy externally opened database path
+- initial embedded-postgres bootstrap support that still depends on local PostgreSQL binaries and lacks broader lifecycle management
 
 ## Still scaffolded or partial
 
@@ -106,13 +109,13 @@ These areas are present in design and partially present in code, but not complet
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
-- full adoption of the bootstrapped local-runtime constructor by the main harness entrypoint
+- embedded Postgres lifecycle management beyond initial bootstrap and stop behavior
 
 ## Not implemented yet
 
 These are still outside the current runtime:
 - per-model harness runtime units across parent and specialists
-- per-model embedded Postgres deployment
+- a mature per-model embedded Postgres deployment and supervision model
 - explicit cross-model replication or governed sharing between model-local stores
 - routing that targets real model units end to end without the old executor policy as the primary decision source across the wider runtime
 - a shared RPC/IPC tool plane with reusable external tool executables
@@ -125,7 +128,6 @@ These are still outside the current runtime:
 - full promotion / rollback enforcement for growth experiments across the wider runtime
 - DEN-produced model-unit bundles with full artifact packaging
 - broad exercised lifecycle tests beyond the current preferred-unit and oversight hook coverage
-- actual embedded Postgres bootstrap and lifecycle management
 
 ## Known weak spots
 
@@ -134,7 +136,7 @@ The repo is most likely to fail when:
 - migrations are not applied in the target database
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
-- the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
+- the initial embedded-postgres bootstrap path is mistaken for a production-quality embedded-store lifecycle
 - initial unit-registry resolution is mistaken for real multi-unit orchestration
 - candidate artifact creation is mistaken for full bundle production
 - narrow promotion/rollback helpers are mistaken for a full lifecycle state engine
