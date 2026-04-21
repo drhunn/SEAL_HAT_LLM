@@ -22,6 +22,15 @@ That means the parent should get better at deciding:
 - when multimodal fusion is required
 - when to escalate, defer, or refuse
 
+The specialists are not supposed to be vague helper personas or internal MoE shards.
+They are supposed to be **explicit smaller models derived from the base model**, shaped for narrower task families through techniques such as distillation, pruning, freezing, and bounded adaptation.
+
+The architectural intent is to replace a traditional mixture-of-experts style internal expert arrangement with **governed external specialist models** that:
+- own real task lanes
+- run faster and cheaper than the parent on those lanes
+- preserve higher resolution on repeated narrow work
+- remain auditable, reviewable, and reversible system components
+
 That learning does **not** replace governance.
 The parent may learn how to route and orchestrate more effectively, but the harness and slot governance still define what is admissible, what requires review, and what structural changes are allowed.
 

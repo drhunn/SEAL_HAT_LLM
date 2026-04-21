@@ -12,6 +12,7 @@ It defines where each responsibility belongs in the runtime, how proposals shoul
 In this repository:
 
 - the **parent** is a generalist and the long-term routing/orchestration layer
+- **specialists** are explicit derived models for narrower task families, not vague helper personas and not internal MoE shards
 - **SEAL** decides **when** the system should adapt and **how** adaptation should be governed
 - **DEN** decides **where** capacity should change and **when** structural expansion is justified because existing capacity is insufficient
 - the **harness** acts as the approving adult and experiment gatekeeper
@@ -44,6 +45,21 @@ Its long-term job is to become a **learning routing/orchestration layer** that i
 
 The parent may learn how to route and orchestrate more effectively.
 It does **not** get to redefine governance, widen its own authority, or bypass slot constraints.
+
+### specialists
+Specialists are persistent, bounded execution surfaces for recurring task families.
+Architecturally, they are supposed to be **smaller descendant or derivative models** of the base model, created through techniques such as:
+- distillation
+- pruning
+- freezing mature parts
+- bounded adaptation of lane-specific capacity
+
+The point is to replace a traditional mixture-of-experts style internal expert arrangement with **explicit governed specialist models** that:
+- own real task lanes
+- can be routed to directly by the parent
+- run faster and cheaper than the parent on narrow repeated work
+- preserve better resolution on that lane than forcing every task through one monolithic generalist
+- remain auditable artifacts with their own lineage, eval history, and rollback path
 
 ### SEAL
 SEAL is the adaptation-decision layer.
@@ -580,12 +596,12 @@ The next step is to stabilize and execute the current loop against a migrated da
 ## summary
 The system architecture should treat:
 - the **parent** as the generalist and long-term learned routing/orchestration layer
+- **specialists** as explicit derived models for narrow recurring task families
 - **SEAL** as the closed-loop adaptation governor
 - **DEN** as the constrained capacity allocator and expansion mechanism
 - the **harness** as the approving adult
 - **slot governance** as the hard boundary on mutability and review
 - **Postgres + pgvector** as the durable evidence, memory, and lineage plane
-- **specialists** as bounded execution surfaces
 
 The system should not become more capable by accident.
 It should become more capable through governed evidence, bounded experiments, better routing/orchestration, and reversible growth.

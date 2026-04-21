@@ -19,6 +19,10 @@ The parent should get better at deciding:
 
 The parent should improve at routing and orchestration **without** gaining the authority to widen governance boundaries on its own.
 
+The specialists the parent routes to are supposed to be **explicit smaller models derived from the base model**, not internal MoE shards.
+That means routing quality is not just about correctness.
+It is also about sending repeated narrow work to the smaller descendant model that can do it faster, cheaper, and with better lane-specific resolution than the parent.
+
 ---
 
 ## non-goals
@@ -125,6 +129,12 @@ Track at least:
 - overall task success after routing
 - latency / cost per route class
 
+Because the specialists are intended to be smaller derived models, the routing benchmark should also measure:
+- parent latency vs specialist latency
+- parent cost vs specialist cost
+- lane-specific quality difference between parent and specialist
+- cases where the parent should keep work because the specialist does not actually outperform it yet
+
 ---
 
 ## training and deployment plan
@@ -183,6 +193,7 @@ Examples:
 - fusion is overused or underused
 - the current specialist layout is inadequate
 - the parent cannot route a recurring task class correctly
+- the parent keeps sending work to a specialist that does not actually outperform it
 
 ### DEN
 Acts only after SEAL justification and harness approval.
@@ -191,6 +202,7 @@ Examples:
 - create a new specialist
 - add a branch or adapter surface
 - restructure specialist coverage
+- produce a smaller distilled/pruned descendant for a recurring task family
 
 So the parent’s learning loop is a **runtime capability improvement**.
 DEN is a **structural change mechanism**.
@@ -239,6 +251,7 @@ Without those, “learning orchestration” is just a slogan.
 ## summary
 The parent should become a **learning routing/orchestration layer**.
 It should improve through measured route episodes, benchmarked comparisons, and harness-gated deployment.
+It should route work toward explicit smaller derived specialist models when those models actually provide better lane-specific speed, cost, or quality.
 SEAL should decide when routing/orchestration failure justifies deeper change.
 DEN should perform only the approved structural changes.
 The harness and slot governance remain the hard boundary the whole time.

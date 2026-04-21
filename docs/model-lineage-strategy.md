@@ -54,6 +54,15 @@ Specialists should normally be created by:
 3. validating against specialist-lane evals
 4. activating only after governance behavior remains acceptable
 
+Architecturally, a specialist is supposed to be an **explicit descendant model artifact**, not just a role label.
+A specialist should normally be:
+- a smaller descendant or derivative of the base model
+- shaped for a narrower recurring task family
+- produced through techniques such as distillation, pruning, freezing, and bounded adaptation
+- tracked as a lineage-bearing model artifact with its own eval history, rollback path, and activation state
+
+The intent is to replace a traditional mixture-of-experts style internal expert arrangement with **explicit governed specialist models** that are easier to audit, route to, benchmark, promote, and retire.
+
 ### 4. micro-expert policy
 Smaller helper branches may be created when justified by:
 - latency pressure
@@ -89,6 +98,8 @@ A governed ability-growth cycle should usually look like:
 7. shadow evaluation runs
 8. activation, refinement, pruning, or rejection follows
 
+When the target is a specialist, the expected result is an explicit descendant model artifact that can be routed to directly by the parent.
+
 ---
 
 ## artifact tracking requirements
@@ -107,6 +118,8 @@ Every descendant or ability module should have a tracked artifact record contain
 - retirement status
 
 If a structure cannot be traced back to its lineage cleanly, it should not be treated as a first-class governed family member.
+
+This requirement is especially important for specialists, because a specialist is supposed to be a real derived model artifact, not just a routing name.
 
 ---
 
@@ -141,6 +154,7 @@ Do not:
 - allow descendants to drift from core governance behavior
 - let the parent approve activation without evidence
 - let the parent perform uncontrolled model surgery directly
+- pretend a specialist exists as a governed model artifact when it is only a name in a router
 
 ---
 
@@ -150,6 +164,7 @@ The default lineage strategy for `SEAL_HAT_LLM` is:
 - keep the parent close to that root and govern growth around it
 - let the parent understand ability growth, split, duplication, and pruning at the policy and approval level
 - grow overlays, descendants, and specialists only when persistent ability gaps justify them
+- treat specialists as explicit smaller descendant models for narrow recurring task families
 - prune or compress only after usefulness is proven
 - track every descendant and ability module with lineage and eval evidence
 
