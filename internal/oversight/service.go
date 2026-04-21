@@ -31,14 +31,23 @@ type ExperimentWriter interface {
 	RollbackExperiment(ctx context.Context, experimentID, approvedBy, reason string) error
 }
 
+type ArtifactExperimentEventWriter interface {
+	RecordSpecialistArtifactEventForExperiment(ctx context.Context, experimentID, eventType, actor, reason string) error
+}
+
 type Service struct {
-	proposalApprover ProposalApprover
-	experimentWriter ExperimentWriter
-	logger           *slog.Logger
+	proposalApprover      ProposalApprover
+	experimentWriter      ExperimentWriter
+	artifactEventWriter   ArtifactExperimentEventWriter
+	logger                *slog.Logger
 }
 
 func NewService(proposalApprover ProposalApprover, experimentWriter ExperimentWriter, logger *slog.Logger) *Service {
-	return &Service{proposalApprover: proposalApprover, experimentWriter: experimentWriter, logger: logger}
+	service := &Service{proposalApprover: proposalApprover, experimentWriter: experimentWriter, logger: logger}
+	if writer, ok := experimentWriter.(ArtifactExperimentEventWriter); ok {
+		service.artifactEventWriter = writer
+	}
+	return service
 }
 
 func (s *Service) ApproveProposal(ctx context.Context, proposalID string, level ApprovalLevel, approvedBy string) error {
@@ -68,10 +77,16 @@ func (s *Service) PromoteExperiment(ctx context.Context, experimentID, approvedB
 	if s.experimentWriter == nil {
 		return nil, fmt.Errorf("experiment writer is required")
 	}
-	if err := s.experimentWriter.PromoteExperiment(ctx, experimentID, approvedBy, defaultReason(reason, "experiment promoted after governed review")); err != nil {
+	finalReason := defaultReason(reason, "experiment promoted after governed review")
+	if err := s.experimentWriter.PromoteExperiment(ctx, experimentID, approvedBy, finalReason); err != nil {
 		return nil, err
 	}
-	decision := &PromotionDecision{ExperimentID: experimentID, Status: "approved", Reason: defaultReason(reason, "experiment promoted after governed review"), ApprovedBy: approvedBy}
+	if s.artifactEventWriter != nil {
+		if err := s.artifactEventWriter.RecordSpecialistArtifactEventForExperiment(ctx, experimentID, "experiment_promoted", approvedBy, finalReason); err != nil {
+			s.logger.WarnContext(ctx, "artifact promotion event recording failed", "experiment_id", experimentID, "err", err)
+		}
+	}
+	decision := &PromotionDecision{ExperimentID: experimentID, Status: "approved", Reason: finalReason, ApprovedBy: approvedBy}
 	s.logger.InfoContext(ctx, "experiment promoted", "experiment_id", experimentID, "approved_by", approvedBy)
 	return decision, nil
 }
@@ -86,8 +101,14 @@ func (s *Service) RollbackExperiment(ctx context.Context, experimentID, approved
 	if s.experimentWriter == nil {
 		return fmt.Errorf("experiment writer is required")
 	}
-	if err := s.experimentWriter.RollbackExperiment(ctx, experimentID, approvedBy, defaultReason(reason, "rollback required after governed review")); err != nil {
+	finalReason := defaultReason(reason, "rollback required after governed review")
+	if err := s.experimentWriter.RollbackExperiment(ctx, experimentID, approvedBy, finalReason); err != nil {
 		return err
+	}
+	if s.artifactEventWriter != nil {
+		if err := s.artifactEventWriter.RecordSpecialistArtifactEventForExperiment(ctx, experimentID, "experiment_rolled_back", approvedBy, finalReason); err != nil {
+			s.logger.WarnContext(ctx, "artifact rollback event recording failed", "experiment_id", experimentID, "err", err)
+		}
 	}
 	s.logger.InfoContext(ctx, "experiment rolled back", "experiment_id", experimentID, "approved_by", approvedBy)
 	return nil
