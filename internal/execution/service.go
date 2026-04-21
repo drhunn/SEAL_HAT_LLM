@@ -146,7 +146,7 @@ func SignalsForExecution(specialistID string, req Request, result Result, execEr
 		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution used text-only fallback", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
 	}
 	if result.Plan.NeedsParentReview {
-		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
+		signals = append(signals, collector.NewSignal(specialistID, "execution", "execution", req.TaskClass, "execution plan requested parent review", telemetry.SeverityModerate, result.Plan.ChosenExecutor))
 	}
 	if result.Plan.RequiresFusion && !strings.Contains(result.Plan.ChosenExecutor, "Fusion") {
 		signals = append(signals, collector.NewSignal(specialistID, "execution", "multimodal", req.TaskClass, "fusion-required execution was not assigned to fusion executor", telemetry.SeverityHigh, result.Plan.ChosenExecutor))
