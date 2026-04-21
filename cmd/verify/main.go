@@ -194,12 +194,18 @@ func main() {
 		logger.Error("runtime task verify failed", "err", err)
 		os.Exit(1)
 	}
+	for _, warning := range result.Warnings {
+		if fatalErr := handleOptionalFailure(mode, logger, "runtime task persistence warning", fmt.Errorf(warning), "task_id", result.Task.ID); fatalErr != nil {
+			os.Exit(1)
+		}
+	}
 	logger.Info("runtime task verify ok",
 		"task_id", result.Task.ID,
 		"executor", result.ExecutionResult.Plan.ChosenExecutor,
 		"execution_mode", result.ExecutionResult.Plan.ExecutionMode,
 		"host", result.ExecutionResult.HostResult.HostName,
 		"signal_count", len(result.Signals),
+		"warning_count", len(result.Warnings),
 	)
 
 	signalStore := telemetry.NewMemoryStore()
@@ -244,7 +250,7 @@ func main() {
 	growthResult, err := growthService.StageExperiment(ctx, cfg.Runtime.Namespace, cfg.Runtime.SpecialistID, growth.Assessment{
 		AbilityName:       "multimodal_grounding",
 		GapSummary:        "Verify governed ability-growth storage and staging.",
-		EvidenceSummary:   fmt.Sprintf("bounded verify task executor=%s host=%s signals=%d", result.ExecutionResult.Plan.ChosenExecutor, result.ExecutionResult.HostResult.HostName, len(result.Signals)),
+		EvidenceSummary:   fmt.Sprintf("bounded verify task executor=%s host=%s signals=%d warnings=%d", result.ExecutionResult.Plan.ChosenExecutor, result.ExecutionResult.HostResult.HostName, len(result.Signals), len(result.Warnings)),
 		TriedMemoryFix:    true,
 		TriedRoutingFix:   true,
 		TriedPromptFix:    true,
