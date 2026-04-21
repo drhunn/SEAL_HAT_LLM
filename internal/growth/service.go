@@ -70,18 +70,27 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 		return nil, err
 	}
 
+	specialistArtifactID := ""
+	artifactID, err := s.store.GetSpecialistArtifactID(ctx, specialistID, specialistID)
+	if err != nil {
+		s.logger.Warn("specialist artifact lookup failed during growth staging", "specialist_id", specialistID, "err", err)
+	} else {
+		specialistArtifactID = artifactID
+	}
+
 	experimentID, err := s.store.CreateAbilityGrowthExperiment(ctx, memory.AbilityGrowthExperimentInput{
-		Namespace:         namespace,
-		SpecialistID:      specialistID,
-		AbilityName:       in.AbilityName,
-		GapSummary:        in.GapSummary,
-		EvidenceSummary:   in.EvidenceSummary,
-		PreferredSurface:  preferredSurface(in.PreferredSurface),
-		Status:            status,
-		RequestedBy:       defaultActor(in.RequestedBy),
-		ParentApprovedBy:  in.ParentApprovedBy,
-		HarnessVerifiedBy: in.HarnessVerifiedBy,
-		Notes:             in.Notes,
+		Namespace:            namespace,
+		SpecialistID:         specialistID,
+		AbilityName:          in.AbilityName,
+		GapSummary:           in.GapSummary,
+		EvidenceSummary:      in.EvidenceSummary,
+		PreferredSurface:     preferredSurface(in.PreferredSurface),
+		Status:               status,
+		RequestedBy:          defaultActor(in.RequestedBy),
+		ParentApprovedBy:     in.ParentApprovedBy,
+		HarnessVerifiedBy:    in.HarnessVerifiedBy,
+		SpecialistArtifactID: specialistArtifactID,
+		Notes:                in.Notes,
 	})
 	if err != nil {
 		return nil, err
@@ -92,6 +101,7 @@ func (s *Service) StageExperiment(ctx context.Context, namespace, specialistID s
 		"ability", in.AbilityName,
 		"status", status,
 		"surface", preferredSurface(in.PreferredSurface),
+		"specialist_artifact_id", specialistArtifactID,
 		"experiment_id", experimentID,
 	)
 

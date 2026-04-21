@@ -33,6 +33,7 @@ The Go side already has:
 - compatibility routing/execution target fields that now carry **unit-target metadata** alongside the existing executor names
 - initial route-episode persistence support for successful startup-task and inbox-task execution paths
 - initial specialist-artifact persistence support for the current local model unit on startup
+- initial growth staging support that now links ability-growth experiments to the current specialist artifact when available
 
 ### SQL layer
 The SQL side already has:
@@ -44,6 +45,7 @@ The SQL side already has:
 - SEAL/DEN tables for signals, proposals, plans, lineage, promotion decisions, and bundle versions
 - a route-episode table for durable routing/execution episode capture
 - a specialist-artifact table for durable model-unit artifact records
+- an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the current specialist artifact
 - seed and verify scripts
 
 ### Python HAT layer
@@ -78,6 +80,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - compatibility unit-target routing layered on top of executor-name dispatch
 - route-episode persistence on current success paths rather than a fully centralized end-of-task hook
 - specialist-artifact persistence for the current local model unit rather than a full DEN-produced bundle pipeline
+- artifact-linked growth staging that still points at the current startup-persisted artifact rather than a richer lifecycle-managed bundle
 
 ## Still scaffolded or partial
 
@@ -119,6 +122,7 @@ The repo is most likely to fail when:
 - the shared-DB scaffold is mistaken for the final per-model embedded-DB architecture
 - compatibility unit-target mapping is mistaken for real multi-unit orchestration
 - initial specialist-artifact persistence is mistaken for a full specialist lifecycle pipeline
+- artifact-linked growth staging is mistaken for real bundle production or lifecycle promotion
 
 ## Next milestone
 
