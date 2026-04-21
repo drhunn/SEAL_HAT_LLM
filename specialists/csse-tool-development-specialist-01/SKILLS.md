@@ -28,7 +28,21 @@ When asked to add, refine, or validate tools.
 4. connect the tool without bypassing policy
 5. test success and failure paths
 
+### skill_name
+Specialist descendant preparation
+
+#### trigger
+When asked to prepare a descendant copy of the base model for a narrow task family, or to design the governed pipeline for specialist creation.
+
+#### procedure
+1. identify the target task family and lane boundaries
+2. define what should remain frozen from the base model
+3. define what should be adapted, distilled, pruned, or compressed
+4. define the artifact, lineage, eval, and rollback requirements
+5. prepare the tooling and validation path before any governed activation
+
 ## playbooks
 - implement a new runtime feature
 - repair a failing specialist loop
 - design a safe slot update
+- prepare a governed specialist descendant pipeline
