@@ -11,20 +11,8 @@ import (
 	"time"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
-
-type taskFileEnvelope struct {
-	ID                          string   `json:"id"`
-	Summary                     string   `json:"summary"`
-	Class                       string   `json:"class"`
-	PrimaryModality             string   `json:"primary_modality"`
-	SecondaryModalities         []string `json:"secondary_modalities"`
-	CrossModalGroundingRequired bool     `json:"cross_modal_grounding_required"`
-	AllowTextOnlyFallback       bool     `json:"allow_text_only_fallback"`
-	PreferredExecutor           string   `json:"preferred_executor"`
-	AssetRefs                   []string `json:"asset_refs"`
-	Prompt                      string   `json:"prompt"`
-}
 
 type queuedTask struct {
 	Task        Task
@@ -105,34 +93,55 @@ func (i *TaskInbox) ClaimNext() (*queuedTask, error) {
 		return queued, fmt.Errorf("read claimed task file %s: %w", name, err)
 	}
 
-	var envelope taskFileEnvelope
-	if err := json.Unmarshal(data, &envelope); err != nil {
+	var taskFile TaskFile
+	if err := json.Unmarshal(data, &taskFile); err != nil {
 		return queued, fmt.Errorf("decode task file %s: %w", name, err)
+	}
+	if err := validateTaskFile(taskFile); err != nil {
+		return queued, fmt.Errorf("validate task file %s: %w", name, err)
 	}
 
 	queued.Task = Task{
-		ID:                          firstNonEmpty(strings.TrimSpace(envelope.ID), queued.Task.ID),
-		Summary:                     firstNonEmpty(strings.TrimSpace(envelope.Summary), queued.Task.Summary),
-		Class:                       firstNonEmpty(strings.TrimSpace(envelope.Class), queued.Task.Class),
-		PrimaryModality:             modality.Normalize(envelope.PrimaryModality),
-		SecondaryModalities:         normalizeSecondaryModalities(envelope.SecondaryModalities),
-		CrossModalGroundingRequired: envelope.CrossModalGroundingRequired,
-		AllowTextOnlyFallback:       envelope.AllowTextOnlyFallback,
-		PreferredExecutor:           strings.TrimSpace(envelope.PreferredExecutor),
-		AssetRefs:                   compactStrings(envelope.AssetRefs),
-		Prompt:                      strings.TrimSpace(envelope.Prompt),
+		ID:                          firstNonEmpty(strings.TrimSpace(taskFile.ID), queued.Task.ID),
+		Summary:                     firstNonEmpty(strings.TrimSpace(taskFile.Summary), queued.Task.Summary),
+		Class:                       firstNonEmpty(strings.TrimSpace(taskFile.Class), queued.Task.Class),
+		PrimaryModality:             modality.Normalize(taskFile.PrimaryModality),
+		SecondaryModalities:         normalizeSecondaryModalities(taskFile.SecondaryModalities),
+		CrossModalGroundingRequired: taskFile.CrossModalGroundingRequired,
+		AllowTextOnlyFallback:       taskFile.AllowTextOnlyFallback,
+		PreferredExecutor:           strings.TrimSpace(taskFile.PreferredExecutor),
+		AssetRefs:                   compactStrings(taskFile.AssetRefs),
+		Prompt:                      strings.TrimSpace(taskFile.Prompt),
 	}
 
 	return queued, nil
 }
 
-func (i *TaskInbox) MarkProcessed(queued *queuedTask) error {
+func (i *TaskInbox) MarkProcessed(queued *queuedTask, result *TaskResult) error {
 	if queued == nil {
 		return nil
 	}
 	dst := i.uniqueArchivePath(i.processedDir, queued.ArchiveName)
 	if err := os.Rename(queued.WorkingPath, dst); err != nil {
 		return fmt.Errorf("archive processed task %s: %w", queued.ArchiveName, err)
+	}
+	artifact := TaskArtifact{
+		Version:         TaskArtifactSchemaVersion,
+		TaskID:          queued.Task.ID,
+		Status:          "processed",
+		Summary:         queued.Task.Summary,
+		Class:           queued.Task.Class,
+		PrimaryModality: queued.Task.PrimaryModality.String(),
+		ArchivedPath:    dst,
+		CompletedAt:     time.Now().UTC(),
+	}
+	if result != nil {
+		artifact.Executor = result.ExecutionResult.Plan.ChosenExecutor
+		artifact.HostName = result.ExecutionResult.HostResult.HostName
+		artifact.SignalSummaries = signalSummaries(result.Signals)
+	}
+	if err := i.writeArtifact(dst, artifact); err != nil {
+		return err
 	}
 	if i.logger != nil {
 		i.logger.Info("task archived as processed", "task_id", queued.Task.ID, "path", dst)
@@ -152,6 +161,20 @@ func (i *TaskInbox) MarkFailed(queued *queuedTask, taskErr error) error {
 	if taskErr != nil {
 		message = strings.TrimSpace(taskErr.Error())
 	}
+	artifact := TaskArtifact{
+		Version:         TaskArtifactSchemaVersion,
+		TaskID:          queued.Task.ID,
+		Status:          "failed",
+		Summary:         queued.Task.Summary,
+		Class:           queued.Task.Class,
+		PrimaryModality: queued.Task.PrimaryModality.String(),
+		ArchivedPath:    dst,
+		Error:           message,
+		CompletedAt:     time.Now().UTC(),
+	}
+	if err := i.writeArtifact(dst, artifact); err != nil {
+		return err
+	}
 	if err := os.WriteFile(dst+".error.txt", []byte(message+"\n"), 0o644); err != nil {
 		return fmt.Errorf("write task failure note: %w", err)
 	}
@@ -169,6 +192,27 @@ func (i *TaskInbox) uniqueArchivePath(dir, name string) string {
 	ext := filepath.Ext(name)
 	base := strings.TrimSuffix(name, ext)
 	return filepath.Join(dir, fmt.Sprintf("%s-%d%s", base, time.Now().UTC().UnixNano(), ext))
+}
+
+func (i *TaskInbox) writeArtifact(archivePath string, artifact TaskArtifact) error {
+	payload, err := json.MarshalIndent(artifact, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode task artifact: %w", err)
+	}
+	if err := os.WriteFile(archivePath+".result.json", payload, 0o644); err != nil {
+		return fmt.Errorf("write task artifact: %w", err)
+	}
+	return nil
+}
+
+func validateTaskFile(taskFile TaskFile) error {
+	if strings.TrimSpace(taskFile.Version) != TaskInboxSchemaVersion {
+		return fmt.Errorf("version must be %q", TaskInboxSchemaVersion)
+	}
+	if strings.TrimSpace(taskFile.Summary) == "" {
+		return fmt.Errorf("summary is required")
+	}
+	return nil
 }
 
 func normalizeSecondaryModalities(values []string) []modality.Type {
@@ -191,6 +235,17 @@ func compactStrings(values []string) []string {
 			continue
 		}
 		out = append(out, value)
+	}
+	return out
+}
+
+func signalSummaries(signals []telemetry.Signal) []string {
+	out := make([]string, 0, len(signals))
+	for _, signal := range signals {
+		if strings.TrimSpace(signal.Summary) == "" {
+			continue
+		}
+		out = append(out, signal.Summary)
 	}
 	return out
 }
