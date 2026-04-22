@@ -8,6 +8,7 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
 
 type RuntimeProcessor interface {
@@ -42,6 +43,9 @@ func (h *RuntimeHandler) RunTask(ctx context.Context, req RunTaskRequest) (RunTa
 	result, err := h.processor.ProcessTask(ctx, task)
 	if err != nil {
 		return RunTaskResponse{TaskID: task.ID, SpecialistUnitID: h.unitID}, err
+	}
+	if result == nil {
+		return RunTaskResponse{}, fmt.Errorf("runtime processor returned nil result")
 	}
 	payload, err := json.Marshal(struct {
 		RoutingDecision interface{} `json:"routing_decision"`
@@ -90,7 +94,7 @@ func compactStrings(values []string) []string {
 	return out
 }
 
-func signalSummaries(signals []struct{ Summary string }) []string {
+func signalSummaries(signals []telemetry.Signal) []string {
 	out := make([]string, 0, len(signals))
 	for _, signal := range signals {
 		if strings.TrimSpace(signal.Summary) == "" {
