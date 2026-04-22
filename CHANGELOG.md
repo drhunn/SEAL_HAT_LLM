@@ -9,6 +9,14 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-21 23:42:18 UTC — Add a repo feature map and tie it into the workflow docs (pending)
+**Summary:** Added a feature-family and subfeature map for the repo so branch planning is anchored to real system lanes instead of vague work piles, and linked it into the workflow and docs index.
+
+**Changes:**
+- Added `docs/feature-map.md` defining feature families, subfeatures, branch naming recommendations, and feature-spec expectations.
+- Updated `docs/README.md` to link `feature-map.md` and `branch-workflow.md` from the docs index and reconciliation section.
+- Updated `docs/branch-workflow.md` to point feature-branch decisions back to `feature-map.md`.
+
 ## 2026-04-21 23:10:03 UTC — Add an initial Unix-socket task RPC path for specialist task handoff (pending)
 **Summary:** Added the first real parent→specialist task handoff mechanism by introducing a typed Unix-domain-socket task RPC transport, a runtime adapter, and optional harness-side serving from the local model-unit entrypoint.
 
