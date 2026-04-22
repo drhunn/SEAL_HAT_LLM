@@ -12,6 +12,7 @@ These files are the current reality anchors:
 - `hat-llm.md` — the current shape of the Python dataset/training-support layer
 - `branch-workflow.md` — the staged branch flow and feature-branch promotion rules
 - `feature-map.md` — the repo’s feature families, subfeatures, and branch naming recommendations
+- `features/README.md` — the feature-spec tree, template, and family folders
 
 ## Core architecture notes
 
@@ -37,6 +38,7 @@ Use these when changing code that touches storage or runtime behavior:
 - `likely-breakpoints.md`
 - `branch-workflow.md`
 - `feature-map.md`
+- `features/README.md`
 
 ## Rule of thumb
 
