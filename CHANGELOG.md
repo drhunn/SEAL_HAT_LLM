@@ -9,6 +9,35 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-22 07:33:40 UTC — Add a feature-spec tree under docs/features and align branch creation to the feature map (pending)
+**Summary:** Added a feature-organized docs tree under `docs/features` with a template and one folder per feature family, and created the feature branches from `main` to match the feature map instead of continuing branch sprawl.
+
+**Changes:**
+- Added `docs/features/README.md`.
+- Added `docs/features/_template/README.md`, `docs/features/_template/acceptance-criteria.md`, and `docs/features/_template/test-plan.md`.
+- Added feature-family folders under `docs/features/` with starter `README.md` files for:
+  - runtime-task-system
+  - model-unit-runtime
+  - storage-and-persistence
+  - task-intake-and-inter-unit-transport
+  - slot-and-bundle-system
+  - governance-and-growth
+  - memory-and-sharing
+  - tool-plane
+  - python-hat-and-training
+- Added `docs/features/runtime-task-system/acceptance-criteria.md` as the first concrete acceptance-criteria placeholder in the new tree.
+- Updated `docs/README.md` to link the new `docs/features/README.md` tree.
+- Created the feature branches aligned with the feature map and workflow:
+  - `feature/runtime-task-system`
+  - `feature/model-unit-runtime`
+  - `feature/storage-and-persistence`
+  - `feature/task-intake-and-inter-unit-transport`
+  - `feature/slot-and-bundle-system`
+  - `feature/governance-and-growth`
+  - `feature/memory-and-sharing`
+  - `feature/shared-tool-plane`
+  - `feature/python-hat-and-training`
+
 ## 2026-04-21 23:42:18 UTC — Add a repo feature map and tie it into the workflow docs (pending)
 **Summary:** Added a feature-family and subfeature map for the repo so branch planning is anchored to real system lanes instead of vague work piles, and linked it into the workflow and docs index.
 
