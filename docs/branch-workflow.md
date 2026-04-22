@@ -53,12 +53,18 @@ This is a per-feature branch created for one specific feature.
 
 Use it for:
 - feature-specific specification
-- acceptance criteria
+- feature-specific acceptance criteria
 - minimal scaffolding
 - skeleton files and initial wiring
+- the tests required for the feature to be considered complete
 - identifying dependencies and open design questions for that feature
 
-A feature branch should create the feature spec and the first scaffolding for the feature.
+A feature branch must produce:
+- the feature spec
+- the completion criteria
+- the first scaffolding for the feature
+- the tests that define done for that feature
+
 It should stay narrow.
 It is not the place to absorb unrelated work.
 
@@ -112,7 +118,9 @@ Cut a feature branch when:
 ### `feature/<feature-name>` -> `Development`
 Promote when:
 - the feature spec exists
+- the acceptance criteria exist
 - the basic scaffolding exists
+- the tests required for feature completion exist
 - the work has a bounded target
 - open questions are documented
 
