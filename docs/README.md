@@ -10,6 +10,8 @@ These files are the current reality anchors:
 - `likely-breakpoints.md` — where the repo is most likely to fail as it evolves
 - `sql-contracts.md` — the contract between SQL schema/functions and the Go runtime
 - `hat-llm.md` — the current shape of the Python dataset/training-support layer
+- `branch-workflow.md` — the staged branch flow and feature-branch promotion rules
+- `feature-map.md` — the repo’s feature families, subfeatures, and branch naming recommendations
 
 ## Core architecture notes
 
@@ -33,6 +35,8 @@ Use these when changing code that touches storage or runtime behavior:
 - `schema-runtime-reconciliation.md`
 - `implementation-status.md`
 - `likely-breakpoints.md`
+- `branch-workflow.md`
+- `feature-map.md`
 
 ## Rule of thumb
 

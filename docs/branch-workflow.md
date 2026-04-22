@@ -4,6 +4,8 @@
 
 Define a simple staged branch flow for `SEAL_HAT_LLM` so work moves through design, feature specification, development, test, and release in a predictable way.
 
+Use `feature-map.md` alongside this file when deciding whether a branch is a real feature or just a vague pile of work.
+
 ---
 
 ## branch model
@@ -67,6 +69,8 @@ A feature branch must produce:
 
 It should stay narrow.
 It is not the place to absorb unrelated work.
+
+Use `feature-map.md` to decide which feature family the branch belongs to and which subfeatures are included in the slice.
 
 Recommended naming examples:
 - `feature/research-specialist-template`
