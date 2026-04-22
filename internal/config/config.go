@@ -32,6 +32,8 @@ type AppConfig struct {
 		EnableTaskInbox           bool   `toml:"enable_task_inbox"`
 		TaskInboxDir              string `toml:"task_inbox_dir"`
 		TaskPollIntervalSeconds   int    `toml:"task_poll_interval_seconds"`
+		EnableTaskRPCServer       bool   `toml:"enable_task_rpc_server"`
+		TaskRPCSocketPath         string `toml:"task_rpc_socket_path"`
 	} `toml:"runtime"`
 	EmbeddedPostgres struct {
 		DataDir      string `toml:"data_dir"`
@@ -88,6 +90,9 @@ func Load(path string) (*AppConfig, error) {
 	}
 	if cfg.Runtime.EnableTaskInbox && cfg.Runtime.TaskInboxDir == "" {
 		cfg.Runtime.TaskInboxDir = "./artifacts/task_inbox"
+	}
+	if cfg.Runtime.EnableTaskRPCServer && strings.TrimSpace(cfg.Runtime.TaskRPCSocketPath) == "" {
+		cfg.Runtime.TaskRPCSocketPath = filepath.Join("./artifacts/taskrpc", cfg.Runtime.SpecialistID+".sock")
 	}
 
 	switch strings.TrimSpace(cfg.Runtime.StoreMode) {

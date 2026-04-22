@@ -9,6 +9,19 @@ Each entry includes:
 - a short summary of what changed
 - the concrete files or behaviors affected
 
+## 2026-04-21 23:10:03 UTC — Add an initial Unix-socket task RPC path for specialist task handoff (pending)
+**Summary:** Added the first real parent→specialist task handoff mechanism by introducing a typed Unix-domain-socket task RPC transport, a runtime adapter, and optional harness-side serving from the local model-unit entrypoint.
+
+**Changes:**
+- Added `internal/taskrpc/transport.go` with typed task request/response contracts plus Unix-socket server/client support.
+- Added `internal/taskrpc/transport_test.go` covering round-trip request handling and handler error propagation.
+- Added `internal/taskrpc/runtime_handler.go` and `internal/taskrpc/runtime_handler_test.go` so `runtime.Service.ProcessTask` can be exposed through the task RPC boundary.
+- Updated `internal/config/config.go` to add optional `runtime.enable_task_rpc_server` and `runtime.task_rpc_socket_path` settings with defaults.
+- Updated `internal/config/config_test.go` to cover default task RPC socket path loading.
+- Updated `config/runtime.example.toml` to document the optional task RPC server settings.
+- Updated `cmd/harness/main.go` to optionally serve task RPC from the harness entrypoint.
+- Updated `docs/implementation-status.md` to record the initial Unix-socket task RPC path and its remaining dispatcher gap.
+
 ## 2026-04-21 22:07:11 UTC — Harden embedded Postgres ownership and shutdown behavior (pending)
 **Summary:** Hardened the initial embedded Postgres path so it has explicit ownership locking, stale-lock reclaim, readiness ping checks, idempotent stop behavior, and cleanup on failed startup instead of just a naive start/stop wrapper.
 

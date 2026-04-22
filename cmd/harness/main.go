@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/taskrpc"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 )
 
@@ -40,6 +41,18 @@ func main() {
 		os.Exit(1)
 	}
 	defer localRuntime.Close()
+
+	if cfg.Runtime.EnableTaskRPCServer {
+		handler := taskrpc.NewRuntimeHandler(unitSpec.UnitID, localRuntime.Runtime)
+		server := taskrpc.NewServer(cfg.Runtime.TaskRPCSocketPath, handler)
+		go func() {
+			if err := server.Serve(ctx); err != nil && ctx.Err() == nil {
+				logger.Error("task rpc server stopped with error", "unit_id", unitSpec.UnitID, "socket", cfg.Runtime.TaskRPCSocketPath, "err", err)
+				cancel()
+			}
+		}()
+		logger.Info("task rpc server enabled", "unit_id", unitSpec.UnitID, "socket", cfg.Runtime.TaskRPCSocketPath)
+	}
 
 	logger.Info("starting local model unit",
 		"unit_id", unitSpec.UnitID,

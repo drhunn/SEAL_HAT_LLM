@@ -40,13 +40,15 @@ The Go side already has:
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
 - routing support for explicitly preferred **unit IDs** in addition to executor-policy selection
 - startup-task construction and task-inbox parsing paths that now carry `PreferredUnitID` into live runtime task objects
+- an initial Unix-domain-socket task RPC transport with typed request/response contracts, client/server support, and a runtime adapter that exposes `runtime.Service.ProcessTask` over the socket boundary
+- optional harness-side task RPC serving from `cmd/harness/main.go` when `runtime.enable_task_rpc_server` is enabled
 - route-episode persistence support for successful startup-task and inbox-task execution paths
 - failed route-episode persistence support for startup-task failures and inbox-task failures via the current runtime wrapper seam
 - current specialist-artifact persistence support for the active local model unit on startup
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, and embedded-postgres ownership/readiness/cleanup behavior
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, embedded-postgres ownership/readiness/cleanup behavior, and Unix-socket task RPC transport/runtime-adapter behavior
 
 ### SQL layer
 The SQL side already has:
@@ -98,6 +100,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - current/candidate artifact separation with candidate rows created during growth staging
 - artifact lifecycle history through event records plus narrow promotion/rollback helpers, rather than a full lifecycle state engine
 - initial embedded-postgres bootstrap support that still depends on local PostgreSQL binaries and lacks broader lifecycle management
+- initial task RPC transport that exposes specialist-side task execution over a local socket but does not yet provide a full parent-side distributed dispatcher
 
 ## Still scaffolded or partial
 
@@ -111,6 +114,7 @@ These areas are present in design and partially present in code, but not complet
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
 - embedded Postgres lifecycle management beyond initial bootstrap, ownership locking, stale-lock reclaim, readiness checks, and stop behavior
+- parent-side RPC dispatch and result orchestration across multiple model units
 
 ## Not implemented yet
 
@@ -138,6 +142,7 @@ The repo is most likely to fail when:
 - docs are read as implementation proof
 - duplicated policy logic drifts across packages
 - the initial embedded-postgres bootstrap path is mistaken for a production-quality embedded-store lifecycle
+- the initial task RPC path is mistaken for a full parent↔specialist distributed runtime
 - initial unit-registry resolution is mistaken for real multi-unit orchestration
 - candidate artifact creation is mistaken for full bundle production
 - narrow promotion/rollback helpers are mistaken for a full lifecycle state engine

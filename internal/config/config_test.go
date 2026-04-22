@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -38,5 +39,36 @@ store_mode = "embedded_postgres"
 	}
 	if cfg.EmbeddedPostgres.User == "" || cfg.EmbeddedPostgres.DatabaseName == "" {
 		t.Fatalf("expected embedded postgres user and database defaults")
+	}
+}
+
+func TestLoadTaskRPCServerDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "runtime.toml")
+	content := `[app]
+name = "SEAL_HAT_LLM"
+
+[database]
+dsn = "postgres://postgres:postgres@localhost:5432/llm_harness?sslmode=disable"
+
+[runtime]
+specialist_id = "csse-tool-development-specialist-01"
+namespace = "memory.csse-tool-development-specialist-01"
+store_mode = "shared_dsn"
+enable_task_rpc_server = true
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write temp config: %v", err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if !cfg.Runtime.EnableTaskRPCServer {
+		t.Fatalf("expected task rpc server to be enabled")
+	}
+	if !strings.Contains(cfg.Runtime.TaskRPCSocketPath, "csse-tool-development-specialist-01.sock") {
+		t.Fatalf("expected default task rpc socket path, got %q", cfg.Runtime.TaskRPCSocketPath)
 	}
 }

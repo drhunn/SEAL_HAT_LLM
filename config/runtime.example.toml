@@ -19,6 +19,8 @@ enable_multimodal_smoke_test = true
 enable_task_inbox = false
 task_inbox_dir = "./artifacts/task_inbox"
 task_poll_interval_seconds = 5
+enable_task_rpc_server = false
+task_rpc_socket_path = "./artifacts/taskrpc/csse-tool-development-specialist-01.sock"
 
 [embedded_postgres]
 data_dir = "./artifacts/embedded_postgres/csse-tool-development-specialist-01"
