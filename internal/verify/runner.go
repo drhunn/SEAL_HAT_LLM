@@ -20,7 +20,7 @@ import (
 	rt "github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/seal"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
-	"github.com/drhunn/SEAL_HAT_LM/internal/telemetry"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 )
 
