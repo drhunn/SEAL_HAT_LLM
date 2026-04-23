@@ -1,5 +1,13 @@
 # SEAL_HAT_LLM
 
+> **Research / prototype / experimental notice**
+>
+> This repository is a **research project**, a **prototype**, and **experimental software**.
+> It is **not production-ready** and should be treated accordingly.
+>
+> Assume interfaces, behavior, storage layout, workflow, and architectural direction may change as the project evolves.
+> Do not treat this repository as a stable runtime, a finished product, or a deployment-ready system.
+
 SEAL_HAT_LLM is a governed scaffold for a specialist-runtime research project whose target shape is:
 - a frozen parent / adaptive specialist model family
 - **one harness per model**
