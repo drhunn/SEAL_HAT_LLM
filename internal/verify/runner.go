@@ -20,7 +20,8 @@ import (
 	rt "github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/seal"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
+	"github.com/drhunn/SEAL_HAT_LM/internal/telemetry"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 )
 
 type Mode string
@@ -164,9 +165,14 @@ func (r *Runner) verifySlotsAndBundle(ctx context.Context) error {
 }
 
 func (r *Runner) verifyRuntimeTask(ctx context.Context) (*rt.TaskResult, error) {
-	routingService := routing.NewService(r.logger)
+	unitSpec, err := unit.SpecFromConfig(r.cfg)
+	if err != nil {
+		return nil, fmt.Errorf("build verify unit spec: %w", err)
+	}
+	registry := unit.NewRegistry(unit.BuiltinSpecs(unitSpec)...)
+	routingService := routing.NewService(r.logger, registry)
 	hostRegistry := modelhost.NewSimulatedRegistry("verify")
-	executionService := execution.NewService(r.logger, hostRegistry)
+	executionService := execution.NewService(r.logger, hostRegistry, registry)
 	taskProcessor := rt.NewService(r.cfg, nil, r.store, nil, routingService, executionService, nil, nil, r.logger)
 
 	verifyTask := rt.Task{
@@ -206,7 +212,7 @@ func (r *Runner) verifyRuntimeTask(ctx context.Context) (*rt.TaskResult, error) 
 		"signal_count", len(result.Signals),
 		"warning_count", len(result.Warnings),
 	)
-	return &result, nil
+	return result, nil
 }
 
 func (r *Runner) verifyAdaptationLoop(ctx context.Context, result *rt.TaskResult) error {
