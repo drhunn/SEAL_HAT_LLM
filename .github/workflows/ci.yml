@@ -2,9 +2,18 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - Test
+      - Development
+      - Design/Architecture
+      - "feature/**"
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - Test
+      - Development
+      - Design/Architecture
 
 jobs:
   go:
