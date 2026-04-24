@@ -54,12 +54,12 @@ func TestProcessTaskCarriesPreferredUnitIDThroughRoutingAndExecution(t *testing.
 	service := rt.NewService(cfg, nil, store, nil, routingService, executionService, nil, nil, logger)
 
 	result, err := service.ProcessTask(ctx, rt.Task{
-		ID:                "test-preferred-unit-runtime-path",
-		Summary:           "verify preferred unit survives process task",
-		Class:             "analysis",
-		PreferredUnitID:   preferredUnitID,
+		ID:                    "test-preferred-unit-runtime-path",
+		Summary:               "verify preferred unit survives process task",
+		Class:                 "analysis",
+		PreferredUnitID:       preferredUnitID,
 		AllowTextOnlyFallback: true,
-		Prompt:            "route and execute through the preferred unit",
+		Prompt:                "route and execute through the preferred unit",
 	})
 	if err != nil {
 		t.Fatalf("ProcessTask returned error: %v", err)
