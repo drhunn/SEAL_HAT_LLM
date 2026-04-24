@@ -38,14 +38,7 @@ func (s *Service) recordRouteEpisode(ctx context.Context, task Task, decision ro
 	if s == nil || s.store == nil || s.cfg == nil {
 		return nil
 	}
-	status := "succeeded"
-	errorText := ""
-	if executionErr != nil {
-		status = "failed"
-		errorText = executionErr.Error()
-	} else if !result.HostResult.Handled {
-		status = "unhandled"
-	}
+	status, errorText := routeEpisodeStatusForOutcome(result, executionErr)
 	_, err := s.store.CreateRouteEpisode(ctx, memory.RouteEpisodeInput{
 		Namespace:         s.cfg.Runtime.Namespace,
 		SpecialistID:      s.cfg.Runtime.SpecialistID,
@@ -70,6 +63,16 @@ func (s *Service) recordRouteEpisode(ctx context.Context, task Task, decision ro
 		ErrorText:         errorText,
 	})
 	return err
+}
+
+func routeEpisodeStatusForOutcome(result execution.Result, executionErr error) (string, string) {
+	if executionErr != nil {
+		return "failed", executionErr.Error()
+	}
+	if !result.HostResult.Handled {
+		return "unhandled", ""
+	}
+	return "succeeded", ""
 }
 
 func classifyIncident(task Task, decision routing.Decision, result execution.Result, executionErr error, signals []telemetry.Signal) (harness.Incident, bool) {
