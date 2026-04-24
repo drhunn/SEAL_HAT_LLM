@@ -41,6 +41,7 @@ type AppConfig struct {
 		User         string `toml:"user"`
 		DatabaseName string `toml:"database_name"`
 		BinDir       string `toml:"bin_dir"`
+		SQLRoot      string `toml:"sql_root"`
 	} `toml:"embedded_postgres"`
 	Harness struct {
 		AutoCreatePostmortems bool   `toml:"auto_create_postmortems"`
@@ -112,6 +113,9 @@ func Load(path string) (*AppConfig, error) {
 		}
 		if cfg.EmbeddedPostgres.DatabaseName == "" {
 			cfg.EmbeddedPostgres.DatabaseName = "postgres"
+		}
+		if strings.TrimSpace(cfg.EmbeddedPostgres.SQLRoot) == "" {
+			cfg.EmbeddedPostgres.SQLRoot = "./sql"
 		}
 	default:
 		return nil, fmt.Errorf("unsupported runtime.store_mode %q", cfg.Runtime.StoreMode)
