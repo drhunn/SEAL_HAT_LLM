@@ -35,6 +35,9 @@ type AppConfig struct {
 		EnableTaskRPCServer       bool   `toml:"enable_task_rpc_server"`
 		TaskRPCSocketPath         string `toml:"task_rpc_socket_path"`
 	} `toml:"runtime"`
+	TaskDispatch struct {
+		RemoteUnitSockets map[string]string `toml:"remote_unit_sockets"`
+	} `toml:"task_dispatch"`
 	EmbeddedPostgres struct {
 		DataDir      string `toml:"data_dir"`
 		Port         int    `toml:"port"`
@@ -95,6 +98,7 @@ func Load(path string) (*AppConfig, error) {
 	if cfg.Runtime.EnableTaskRPCServer && strings.TrimSpace(cfg.Runtime.TaskRPCSocketPath) == "" {
 		cfg.Runtime.TaskRPCSocketPath = filepath.Join("./artifacts/taskrpc", cfg.Runtime.SpecialistID+".sock")
 	}
+	cfg.TaskDispatch.RemoteUnitSockets = cleanStringMap(cfg.TaskDispatch.RemoteUnitSockets)
 
 	switch strings.TrimSpace(cfg.Runtime.StoreMode) {
 	case "shared_dsn":
@@ -135,4 +139,23 @@ func (c *AppConfig) LogLevel() slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+func cleanStringMap(values map[string]string) map[string]string {
+	if len(values) == 0 {
+		return nil
+	}
+	cleaned := make(map[string]string, len(values))
+	for key, value := range values {
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" {
+			continue
+		}
+		cleaned[key] = value
+	}
+	if len(cleaned) == 0 {
+		return nil
+	}
+	return cleaned
 }
