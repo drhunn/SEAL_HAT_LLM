@@ -14,6 +14,8 @@ It currently supports:
 - calling a task-RPC client
 - returning a structured dispatch result containing the target unit, socket path, request, and response
 - returning partial dispatch results when the remote RPC call fails
+- attaching the configured dispatcher to the local runtime during `unit.NewLocalRuntime`
+- dispatching mapped non-local task targets from `runtime.Service.ProcessTask` over task RPC
 
 ## Configuration
 
@@ -28,8 +30,24 @@ Example:
 ```
 
 The config loader trims empty keys and empty socket paths.
-If a target unit is not mapped, dispatch must fail loudly.
+If a target unit is not mapped, dispatch does not silently pretend it succeeded.
 Silent fallback would make routing dishonest.
+
+## Runtime behavior
+
+`ProcessTask` still performs local retrieval and routing first.
+
+If routing resolves a target unit that is:
+- not the current local unit, and
+- present in `task_dispatch.remote_unit_sockets`, and
+- a runtime remote dispatcher is attached,
+
+then the task is sent over task RPC.
+
+The remote response is converted into an `execution.Result` with:
+- `ExecutionMode = "remote_rpc"`
+- `TargetUnitID` from the routing decision
+- host metadata containing the remote socket path and remote status
 
 ## What it does not do yet
 
@@ -47,4 +65,4 @@ It does not yet provide:
 The dispatcher is intentionally small.
 It is a parent-side RPC seam, not a finished distributed runtime.
 
-The next real step is to wire this seam into runtime orchestration and persist dispatch success/failure as route episodes.
+The next real step is to persist remote dispatch success/failure as route episodes and centralize task outcome accounting.
