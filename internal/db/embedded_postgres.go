@@ -35,6 +35,7 @@ var runEmbeddedCommand = runCommand
 var embeddedPostgresStatus = postgresRunning
 var embeddedPostgresNow = func() time.Time { return time.Now().UTC() }
 var embeddedPostgresStaleLockAge = 2 * time.Minute
+var bootstrapEmbeddedPostgresSchema = BootstrapSchema
 
 func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*EmbeddedPostgresHandle, error) {
 	dataDir := strings.TrimSpace(cfg.DataDir)
@@ -104,6 +105,15 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 		}
 		return nil, fmt.Errorf("ping embedded postgres pool: %w", err)
+	}
+	if bootstrapEmbeddedPostgresSchema != nil {
+		if err := bootstrapEmbeddedPostgresSchema(ctx, pool); err != nil {
+			pool.Close()
+			if startedHere {
+				_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
+			}
+			return nil, fmt.Errorf("bootstrap embedded postgres schema: %w", err)
+		}
 	}
 
 	var stopOnce sync.Once
