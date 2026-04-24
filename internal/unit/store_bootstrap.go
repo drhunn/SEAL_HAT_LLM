@@ -56,6 +56,7 @@ func OpenStore(ctx context.Context, spec Spec, cfg *config.AppConfig, logger *sl
 			User:         strings.TrimSpace(cfg.EmbeddedPostgres.User),
 			DatabaseName: strings.TrimSpace(cfg.EmbeddedPostgres.DatabaseName),
 			BinDir:       strings.TrimSpace(cfg.EmbeddedPostgres.BinDir),
+			SQLRoot:      strings.TrimSpace(cfg.EmbeddedPostgres.SQLRoot),
 		})
 		if err != nil {
 			return nil, err
