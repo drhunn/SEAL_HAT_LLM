@@ -32,6 +32,11 @@ type EmbeddedPostgresHandle struct {
 var commandContext = exec.CommandContext
 var openPool = Open
 var pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return pool.Ping(ctx) }
+var closePool = func(pool *pgxpool.Pool) {
+	if pool != nil {
+		pool.Close()
+	}
+}
 var runEmbeddedCommand = runCommand
 var embeddedPostgresStatus = postgresRunning
 var embeddedPostgresNow = func() time.Time { return time.Now().UTC() }
@@ -105,7 +110,7 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 		return nil, fmt.Errorf("open embedded postgres pool returned nil pool")
 	}
 	if err := pingPool(ctx, pool); err != nil {
-		pool.Close()
+		closePool(pool)
 		if startedHere {
 			_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 		}
@@ -113,7 +118,7 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 	}
 	if bootstrapEmbeddedPostgresSchema != nil {
 		if err := bootstrapEmbeddedPostgresSchema(ctx, pool, sqlRoot); err != nil {
-			pool.Close()
+			closePool(pool)
 			if startedHere {
 				_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 			}
@@ -125,9 +130,7 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 	var stopErr error
 	stop := func() error {
 		stopOnce.Do(func() {
-			if pool != nil {
-				pool.Close()
-			}
+			closePool(pool)
 			if startedHere {
 				stopErr = runEmbeddedCommand(context.Background(), pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
 			}
