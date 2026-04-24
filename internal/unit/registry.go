@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/executors"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unitref"
 )
 
 type Registry struct {
@@ -62,6 +63,31 @@ func (r *Registry) ResolveUnit(unitID string) (Spec, bool) {
 	}
 	spec, ok := r.byUnitID[strings.TrimSpace(unitID)]
 	return spec, ok
+}
+
+func (r *Registry) ResolveExecutorTarget(executorName string) (unitref.Target, bool) {
+	spec, ok := r.ResolveExecutor(executorName)
+	if !ok {
+		return unitref.Target{}, false
+	}
+	return targetFromSpec(spec), true
+}
+
+func (r *Registry) ResolveUnitTarget(unitID string) (unitref.Target, bool) {
+	spec, ok := r.ResolveUnit(unitID)
+	if !ok {
+		return unitref.Target{}, false
+	}
+	return targetFromSpec(spec), true
+}
+
+func targetFromSpec(spec Spec) unitref.Target {
+	return unitref.Target{
+		UnitID:       spec.UnitID,
+		Role:         unitref.Role(spec.Role),
+		ModelRef:     spec.ModelRef,
+		ExecutorName: spec.ExecutorName,
+	}
 }
 
 func builtinSpec(executorName string, role Role) Spec {
