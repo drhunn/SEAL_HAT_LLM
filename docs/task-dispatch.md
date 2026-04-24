@@ -17,6 +17,8 @@ It currently supports:
 - attaching the configured dispatcher to the local runtime during `unit.NewLocalRuntime`
 - dispatching mapped non-local task targets from `runtime.Service.ProcessTask` over task RPC
 - recording local and remote task outcomes through the centralized route-episode hook
+- DB-backed route-episode persistence tests for local, remote, failure, and unhandled outcomes
+- an end-to-end DB-backed remote dispatch integration test using a live Unix-socket task-RPC server
 
 ## Configuration
 
@@ -62,6 +64,14 @@ Current status derivation:
 Route episode persistence is best-effort inside the outcome hook.
 A route-episode write failure is logged and does not hide the original task result.
 
+## Proof tests
+
+DB-backed proof tests are skipped unless `TEST_DATABASE_DSN` is set.
+
+Current proof coverage:
+- `internal/memory/route_episode_test.go` verifies route episode rows for local success, local failure, remote success, remote failure, and unhandled host outcomes.
+- `internal/runtime/remote_dispatch_integration_test.go` starts a live task-RPC Unix-socket server, dispatches a parent runtime task to the mapped remote unit, and verifies the parent wrote a `remote_rpc` route episode.
+
 ## What it does not do yet
 
 It does not yet provide:
@@ -77,4 +87,4 @@ It does not yet provide:
 The dispatcher is intentionally small.
 It is a parent-side RPC seam, not a finished distributed runtime.
 
-The next real step is broader validation: prove local success, local failure, remote success, and remote failure all record route episodes under a real database-backed test.
+The next real step is hard validation: run the full Go test suite, DB-backed tests, strict verify, and build checks.
