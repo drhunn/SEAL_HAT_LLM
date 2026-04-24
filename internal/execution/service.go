@@ -9,9 +9,13 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/unitref"
 )
+
+type TargetResolver interface {
+	ResolveExecutorTarget(executorName string) (unitref.Target, bool)
+	ResolveUnitTarget(unitID string) (unitref.Target, bool)
+}
 
 type Request struct {
 	TaskSummary                 string
@@ -30,7 +34,7 @@ type Plan struct {
 	ExecutionMode        string
 	ChosenExecutor       string
 	TargetUnitID         string
-	TargetRole           unit.Role
+	TargetRole           unitref.Role
 	TargetModelRef       string
 	RequiresFusion       bool
 	UsesTextOnlyFallback bool
@@ -46,11 +50,11 @@ type Result struct {
 type Service struct {
 	logger   *slog.Logger
 	hosts    *modelhost.Registry
-	registry *unit.Registry
+	resolver TargetResolver
 }
 
-func NewService(logger *slog.Logger, hosts *modelhost.Registry, registry *unit.Registry) *Service {
-	return &Service{logger: logger, hosts: hosts, registry: registry}
+func NewService(logger *slog.Logger, hosts *modelhost.Registry, resolver TargetResolver) *Service {
+	return &Service{logger: logger, hosts: hosts, resolver: resolver}
 }
 
 func (s *Service) Plan(ctx context.Context, req Request) Plan {
@@ -109,29 +113,17 @@ func (s *Service) Plan(ctx context.Context, req Request) Plan {
 }
 
 func (s *Service) resolveTarget(executorName string) unitref.Target {
-	if s != nil && s.registry != nil {
-		if spec, ok := s.registry.ResolveExecutor(executorName); ok {
-			return unitref.Target{
-				UnitID:       spec.UnitID,
-				Role:         spec.Role,
-				ModelRef:     spec.ModelRef,
-				ExecutorName: spec.ExecutorName,
-			}
+	if s != nil && s.resolver != nil {
+		if target, ok := s.resolver.ResolveExecutorTarget(executorName); ok {
+			return target
 		}
 	}
 	return unitref.ForExecutor(executorName)
 }
 
 func (s *Service) resolveUnitTarget(unitID string) (unitref.Target, bool) {
-	if s != nil && s.registry != nil {
-		if spec, ok := s.registry.ResolveUnit(unitID); ok {
-			return unitref.Target{
-				UnitID:       spec.UnitID,
-				Role:         spec.Role,
-				ModelRef:     spec.ModelRef,
-				ExecutorName: spec.ExecutorName,
-			}, true
-		}
+	if s != nil && s.resolver != nil {
+		return s.resolver.ResolveUnitTarget(unitID)
 	}
 	return unitref.Target{}, false
 }
