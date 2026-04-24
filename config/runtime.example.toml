@@ -28,6 +28,7 @@ port = 55432
 user = "postgres"
 database_name = "postgres"
 bin_dir = ""
+sql_root = "./sql"
 
 [harness]
 auto_create_postmortems = true
