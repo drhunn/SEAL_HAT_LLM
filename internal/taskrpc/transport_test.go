@@ -26,10 +26,7 @@ func (h testHandler) RunTask(ctx context.Context, req RunTaskRequest) (RunTaskRe
 func TestServerClientRoundTrip(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "taskrpc.sock")
 	server := NewServer(socketPath, testHandler{resp: RunTaskResponse{TaskID: "task-1", SpecialistUnitID: "spec-1", Status: "ok", ResultSummary: "done", Confidence: 0.9}})
-	ctx, cancel := context.WithCancel(context.Background())
-	serveErr := make(chan error, 1)
-	go func() { serveErr <- server.Serve(ctx) }()
-	waitForSocket(t, socketPath)
+	startTestServer(t, server, socketPath)
 
 	client := NewClient(socketPath)
 	resp, err := client.RunTask(context.Background(), RunTaskRequest{TaskID: "task-1", TargetUnitID: "spec-1", Summary: "do thing"})
@@ -42,11 +39,6 @@ func TestServerClientRoundTrip(t *testing.T) {
 	if resp.TaskID != "task-1" || resp.SpecialistUnitID != "spec-1" {
 		t.Fatalf("unexpected response: %+v", resp)
 	}
-
-	cancel()
-	if err := <-serveErr; err != nil {
-		t.Fatalf("server returned error: %v", err)
-	}
 }
 
 func TestServerClientPropagatesHandlerError(t *testing.T) {
@@ -54,10 +46,7 @@ func TestServerClientPropagatesHandlerError(t *testing.T) {
 	server := NewServer(socketPath, testHandler{fn: func(ctx context.Context, req RunTaskRequest) (RunTaskResponse, error) {
 		return RunTaskResponse{TaskID: req.TaskID, SpecialistUnitID: req.TargetUnitID}, context.DeadlineExceeded
 	}})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = server.Serve(ctx) }()
-	waitForSocket(t, socketPath)
+	startTestServer(t, server, socketPath)
 
 	client := NewClient(socketPath)
 	_, err := client.RunTask(context.Background(), RunTaskRequest{TaskID: "task-2", TargetUnitID: "spec-2", Summary: "fail thing"})
@@ -77,10 +66,7 @@ func TestClientRejectsOversizedRequest(t *testing.T) {
 func TestServerRejectsMalformedJSON(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "taskrpc.sock")
 	server := NewServer(socketPath, testHandler{resp: RunTaskResponse{Status: "ok"}})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = server.Serve(ctx) }()
-	waitForSocket(t, socketPath)
+	startTestServer(t, server, socketPath)
 
 	resp := writeRawRequest(t, socketPath, []byte("{bad json\n"))
 	if resp.Status != "error" || !strings.Contains(resp.ErrorText, "decode request") {
@@ -91,10 +77,7 @@ func TestServerRejectsMalformedJSON(t *testing.T) {
 func TestServerRejectsUnsupportedProtocolVersion(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "taskrpc.sock")
 	server := NewServer(socketPath, testHandler{resp: RunTaskResponse{Status: "ok"}})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = server.Serve(ctx) }()
-	waitForSocket(t, socketPath)
+	startTestServer(t, server, socketPath)
 
 	payload, err := json.Marshal(RunTaskRequest{ProtocolVersion: "taskrpc.v0", TaskID: "task-old"})
 	if err != nil {
@@ -109,10 +92,7 @@ func TestServerRejectsUnsupportedProtocolVersion(t *testing.T) {
 func TestServerRejectsOversizedRequest(t *testing.T) {
 	socketPath := filepath.Join(t.TempDir(), "taskrpc.sock")
 	server := NewServerWithOptions(socketPath, testHandler{resp: RunTaskResponse{Status: "ok"}}, ServerOptions{MaxRequestBytes: 64})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = server.Serve(ctx) }()
-	waitForSocket(t, socketPath)
+	startTestServer(t, server, socketPath)
 
 	payload, err := json.Marshal(RunTaskRequest{ProtocolVersion: ProtocolVersion, TaskID: "task-big", Summary: strings.Repeat("x", 256)})
 	if err != nil {
@@ -141,10 +121,30 @@ func TestServerRemovesSocketOnShutdown(t *testing.T) {
 	}
 }
 
+func startTestServer(t *testing.T, server *Server, socketPath string) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(ctx) }()
+	waitForSocket(t, socketPath)
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case err := <-serveErr:
+			if err != nil {
+				t.Fatalf("server returned error during cleanup: %v", err)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for server shutdown")
+		}
+	})
+}
+
 func waitForSocket(t *testing.T, socketPath string) {
 	t.Helper()
-	for i := 0; i < 50; i++ {
-		conn, err := net.Dial("unix", socketPath)
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("unix", socketPath, 50*time.Millisecond)
 		if err == nil {
 			_ = conn.Close()
 			return
@@ -156,11 +156,14 @@ func waitForSocket(t *testing.T, socketPath string) {
 
 func writeRawRequest(t *testing.T, socketPath string, payload []byte) RunTaskResponse {
 	t.Helper()
-	conn, err := net.Dial("unix", socketPath)
+	conn, err := net.DialTimeout("unix", socketPath, time.Second)
 	if err != nil {
 		t.Fatalf("dial socket: %v", err)
 	}
 	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("set deadline: %v", err)
+	}
 	if _, err := conn.Write(payload); err != nil {
 		t.Fatalf("write request: %v", err)
 	}
