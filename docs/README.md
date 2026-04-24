@@ -6,6 +6,7 @@ Do not treat every document here as proof that the code already does the thing i
 ## Read first
 
 These files are the current reality anchors:
+- `acceptance-criteria.md` — concrete admission gates for the runtime task system work
 - `implementation-status.md` — what is implemented, what is scaffolded, and what is still missing
 - `likely-breakpoints.md` — where the repo is most likely to fail as it evolves
 - `sql-contracts.md` — the contract between SQL schema/functions and the Go runtime
@@ -32,6 +33,7 @@ These documents explain the intended shape of the system:
 ## Contracts and reconciliation
 
 Use these when changing code that touches storage or runtime behavior:
+- `acceptance-criteria.md`
 - `sql-contracts.md`
 - `schema-runtime-reconciliation.md`
 - `implementation-status.md`
