@@ -6,7 +6,7 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/unitref"
 )
 
 func TestShouldDispatchRemoteRequiresConfiguredNonLocalTarget(t *testing.T) {
@@ -32,7 +32,7 @@ func TestExecutionResultForRemoteDispatchMapsRemoteResult(t *testing.T) {
 	result := executionResultForRemoteDispatch(routing.Decision{
 		ChosenTarget:   "remote-executor",
 		TargetUnitID:   "remote-unit",
-		TargetRole:     unit.RoleSpecialist,
+		TargetRole:     unitref.RoleSpecialist,
 		TargetModelRef: "remote-model",
 	}, &RemoteDispatchResult{
 		SocketPath:    "/tmp/remote.sock",
