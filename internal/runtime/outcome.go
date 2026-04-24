@@ -7,11 +7,15 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/harness"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
 
 func (s *Service) handleTaskOutcome(ctx context.Context, task Task, decision routing.Decision, result execution.Result, executionErr error, signals []telemetry.Signal) error {
+	if err := s.recordRouteEpisode(ctx, task, decision, result, executionErr); err != nil {
+		s.logger.Warn("record route episode failed", "task_id", task.ID, "err", err)
+	}
 	if incident, ok := classifyIncident(task, decision, result, executionErr, signals); ok {
 		if s.harness == nil {
 			return nil
@@ -28,6 +32,44 @@ func (s *Service) handleTaskOutcome(ctx context.Context, task Task, decision rou
 		)
 	}
 	return nil
+}
+
+func (s *Service) recordRouteEpisode(ctx context.Context, task Task, decision routing.Decision, result execution.Result, executionErr error) error {
+	if s == nil || s.store == nil || s.cfg == nil {
+		return nil
+	}
+	status := "succeeded"
+	errorText := ""
+	if executionErr != nil {
+		status = "failed"
+		errorText = executionErr.Error()
+	} else if !result.HostResult.Handled {
+		status = "unhandled"
+	}
+	_, err := s.store.CreateRouteEpisode(ctx, memory.RouteEpisodeInput{
+		Namespace:         s.cfg.Runtime.Namespace,
+		SpecialistID:      s.cfg.Runtime.SpecialistID,
+		TaskID:            task.ID,
+		TaskSummary:       task.Summary,
+		TaskClass:         task.Class,
+		PrimaryModality:   task.PrimaryModality.String(),
+		ChosenTarget:      decision.ChosenTarget,
+		TargetUnitID:      decision.TargetUnitID,
+		TargetRole:        string(decision.TargetRole),
+		TargetModelRef:    decision.TargetModelRef,
+		ChosenExecutor:    result.Plan.ChosenExecutor,
+		ExecutionMode:     result.Plan.ExecutionMode,
+		Confidence:        decision.Confidence,
+		WasFallback:       decision.WasFallback,
+		FallbackReason:    decision.FallbackReason,
+		NeedsParentReview: decision.NeedsParentView || result.Plan.NeedsParentReview,
+		RequiresFusion:    decision.RequiresFusion || result.Plan.RequiresFusion,
+		ExecutionHandled:  result.HostResult.Handled,
+		ExecutionHost:     result.HostResult.HostName,
+		Status:            status,
+		ErrorText:         errorText,
+	})
+	return err
 }
 
 func classifyIncident(task Task, decision routing.Decision, result execution.Result, executionErr error, signals []telemetry.Signal) (harness.Incident, bool) {
