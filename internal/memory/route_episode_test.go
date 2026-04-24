@@ -11,6 +11,7 @@ import (
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/db"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestCreateRouteEpisodePersistsOutcomeStatuses(t *testing.T) {
@@ -50,63 +51,11 @@ func TestCreateRouteEpisodePersistsOutcomeStatuses(t *testing.T) {
 		status           string
 		errorText        string
 	}{
-		{
-			name:             "local success",
-			taskID:           prefix + "-local-success",
-			executionMode:    "unimodal",
-			chosenTarget:     "local-executor",
-			targetUnitID:     specialistID,
-			chosenExecutor:   "local-executor",
-			executionHandled: true,
-			executionHost:    "local-host",
-			status:           "succeeded",
-		},
-		{
-			name:             "local failure",
-			taskID:           prefix + "-local-failure",
-			executionMode:    "unimodal",
-			chosenTarget:     "local-executor",
-			targetUnitID:     specialistID,
-			chosenExecutor:   "local-executor",
-			executionHandled: false,
-			executionHost:    "local-host",
-			status:           "failed",
-			errorText:        "local boom",
-		},
-		{
-			name:             "remote success",
-			taskID:           prefix + "-remote-success",
-			executionMode:    "remote_rpc",
-			chosenTarget:     "remote-executor",
-			targetUnitID:     "remote-unit",
-			chosenExecutor:   "remote-executor",
-			executionHandled: true,
-			executionHost:    "remote-unit",
-			status:           "succeeded",
-		},
-		{
-			name:             "remote failure",
-			taskID:           prefix + "-remote-failure",
-			executionMode:    "remote_rpc",
-			chosenTarget:     "remote-executor",
-			targetUnitID:     "remote-unit",
-			chosenExecutor:   "remote-executor",
-			executionHandled: false,
-			executionHost:    "remote-unit",
-			status:           "failed",
-			errorText:        "remote boom",
-		},
-		{
-			name:             "unhandled host",
-			taskID:           prefix + "-unhandled",
-			executionMode:    "unimodal",
-			chosenTarget:     "local-executor",
-			targetUnitID:     specialistID,
-			chosenExecutor:   "local-executor",
-			executionHandled: false,
-			executionHost:    "local-host",
-			status:           "unhandled",
-		},
+		{name: "local success", taskID: prefix + "-local-success", executionMode: "unimodal", chosenTarget: "local-executor", targetUnitID: specialistID, chosenExecutor: "local-executor", executionHandled: true, executionHost: "local-host", status: "succeeded"},
+		{name: "local failure", taskID: prefix + "-local-failure", executionMode: "unimodal", chosenTarget: "local-executor", targetUnitID: specialistID, chosenExecutor: "local-executor", executionHandled: false, executionHost: "local-host", status: "failed", errorText: "local boom"},
+		{name: "remote success", taskID: prefix + "-remote-success", executionMode: "remote_rpc", chosenTarget: "remote-executor", targetUnitID: "remote-unit", chosenExecutor: "remote-executor", executionHandled: true, executionHost: "remote-unit", status: "succeeded"},
+		{name: "remote failure", taskID: prefix + "-remote-failure", executionMode: "remote_rpc", chosenTarget: "remote-executor", targetUnitID: "remote-unit", chosenExecutor: "remote-executor", executionHandled: false, executionHost: "remote-unit", status: "failed", errorText: "remote boom"},
+		{name: "unhandled host", taskID: prefix + "-unhandled", executionMode: "unimodal", chosenTarget: "local-executor", targetUnitID: specialistID, chosenExecutor: "local-executor", executionHandled: false, executionHost: "local-host", status: "unhandled"},
 	}
 
 	for _, tt := range tests {
@@ -155,9 +104,7 @@ func TestCreateRouteEpisodePersistsOutcomeStatuses(t *testing.T) {
 	}
 }
 
-func ensureRouteEpisodeTestSpecialist(ctx context.Context, pool interface {
-	Exec(context.Context, string, ...any) (interface{}, error)
-}, specialistID, namespace string) error {
+func ensureRouteEpisodeTestSpecialist(ctx context.Context, pool *pgxpool.Pool, specialistID, namespace string) error {
 	_, err := pool.Exec(ctx, `
 		INSERT INTO agent_core.specialists (
 			specialist_id, name, domain, role, lineage_parent_id, status, priority,
