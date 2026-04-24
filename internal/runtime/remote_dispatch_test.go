@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"testing"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
@@ -59,6 +60,6 @@ func TestExecutionResultForRemoteDispatchMapsRemoteResult(t *testing.T) {
 
 type fakeRemoteDispatcher struct{}
 
-func (fakeRemoteDispatcher) DispatchRemote(Task) (*RemoteDispatchResult, error) {
+func (fakeRemoteDispatcher) DispatchRemote(context.Context, Task) (*RemoteDispatchResult, error) {
 	return nil, nil
 }
