@@ -20,6 +20,7 @@ type EmbeddedPostgresConfig struct {
 	User         string
 	DatabaseName string
 	BinDir       string
+	SQLRoot      string
 }
 
 type EmbeddedPostgresHandle struct {
@@ -35,7 +36,7 @@ var runEmbeddedCommand = runCommand
 var embeddedPostgresStatus = postgresRunning
 var embeddedPostgresNow = func() time.Time { return time.Now().UTC() }
 var embeddedPostgresStaleLockAge = 2 * time.Minute
-var bootstrapEmbeddedPostgresSchema = BootstrapSchema
+var bootstrapEmbeddedPostgresSchema = BootstrapSchemaFromRoot
 
 func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*EmbeddedPostgresHandle, error) {
 	dataDir := strings.TrimSpace(cfg.DataDir)
@@ -49,6 +50,10 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 	databaseName := strings.TrimSpace(cfg.DatabaseName)
 	if databaseName == "" {
 		databaseName = "postgres"
+	}
+	sqlRoot := strings.TrimSpace(cfg.SQLRoot)
+	if sqlRoot == "" {
+		sqlRoot = DefaultSchemaBootstrapRoot
 	}
 	if cfg.Port <= 0 {
 		return nil, fmt.Errorf("embedded postgres port must be positive")
@@ -107,7 +112,7 @@ func OpenEmbeddedPostgres(ctx context.Context, cfg EmbeddedPostgresConfig) (*Emb
 		return nil, fmt.Errorf("ping embedded postgres pool: %w", err)
 	}
 	if bootstrapEmbeddedPostgresSchema != nil {
-		if err := bootstrapEmbeddedPostgresSchema(ctx, pool); err != nil {
+		if err := bootstrapEmbeddedPostgresSchema(ctx, pool, sqlRoot); err != nil {
 			pool.Close()
 			if startedHere {
 				_ = runEmbeddedCommand(ctx, pgCtlPath, "-D", dataDir, "-m", "fast", "stop")
