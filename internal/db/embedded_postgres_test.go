@@ -20,7 +20,7 @@ func resetEmbeddedPostgresTestHooks(t *testing.T) {
 	oldNow := embeddedPostgresNow
 	oldStaleAge := embeddedPostgresStaleLockAge
 	oldBootstrap := bootstrapEmbeddedPostgresSchema
-	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
+	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool, sqlRoot string) error { return nil }
 	t.Cleanup(func() {
 		runEmbeddedCommand = oldRun
 		embeddedPostgresStatus = oldStatus
@@ -167,12 +167,46 @@ func TestOpenEmbeddedPostgresBootstrapsSchemaAfterPing(t *testing.T) {
 	resetEmbeddedPostgresTestHooks(t)
 
 	var bootstrapCount int
+	var gotSQLRoot string
 	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error { return nil }
 	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return true }
 	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
 	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
-	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool) error {
+	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool, sqlRoot string) error {
 		bootstrapCount++
+		gotSQLRoot = sqlRoot
+		return nil
+	}
+
+	dataDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dataDir, "PG_VERSION"), []byte("16\n"), 0o644); err != nil {
+		t.Fatalf("write PG_VERSION: %v", err)
+	}
+	h, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432, SQLRoot: "/repo/sql"})
+	if err != nil {
+		t.Fatalf("OpenEmbeddedPostgres returned error: %v", err)
+	}
+	if bootstrapCount != 1 {
+		t.Fatalf("expected one schema bootstrap call, got %d", bootstrapCount)
+	}
+	if gotSQLRoot != "/repo/sql" {
+		t.Fatalf("expected configured SQL root, got %q", gotSQLRoot)
+	}
+	if err := h.Stop(); err != nil {
+		t.Fatalf("stop returned error: %v", err)
+	}
+}
+
+func TestOpenEmbeddedPostgresDefaultsSQLRoot(t *testing.T) {
+	resetEmbeddedPostgresTestHooks(t)
+
+	var gotSQLRoot string
+	runEmbeddedCommand = func(ctx context.Context, name string, args ...string) error { return nil }
+	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return true }
+	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
+	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
+	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool, sqlRoot string) error {
+		gotSQLRoot = sqlRoot
 		return nil
 	}
 
@@ -184,8 +218,8 @@ func TestOpenEmbeddedPostgresBootstrapsSchemaAfterPing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenEmbeddedPostgres returned error: %v", err)
 	}
-	if bootstrapCount != 1 {
-		t.Fatalf("expected one schema bootstrap call, got %d", bootstrapCount)
+	if gotSQLRoot != DefaultSchemaBootstrapRoot {
+		t.Fatalf("expected default SQL root %q, got %q", DefaultSchemaBootstrapRoot, gotSQLRoot)
 	}
 	if err := h.Stop(); err != nil {
 		t.Fatalf("stop returned error: %v", err)
@@ -209,7 +243,7 @@ func TestOpenEmbeddedPostgresCleansUpWhenBootstrapFails(t *testing.T) {
 	embeddedPostgresStatus = func(ctx context.Context, pgCtlPath, dataDir string) bool { return false }
 	openPool = func(ctx context.Context, dsn string) (*pgxpool.Pool, error) { return &pgxpool.Pool{}, nil }
 	pingPool = func(ctx context.Context, pool *pgxpool.Pool) error { return nil }
-	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool) error { return errors.New("schema boom") }
+	bootstrapEmbeddedPostgresSchema = func(ctx context.Context, pool *pgxpool.Pool, sqlRoot string) error { return errors.New("schema boom") }
 
 	dataDir := t.TempDir()
 	_, err := OpenEmbeddedPostgres(context.Background(), EmbeddedPostgresConfig{DataDir: dataDir, Port: 55432})
