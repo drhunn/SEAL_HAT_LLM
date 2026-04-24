@@ -19,6 +19,20 @@ New migrations should either:
 - set `search_path TO agent_core, public`, or
 - fully qualify `agent_core.` object names consistently
 
+## Bootstrap contract
+
+The Go bootstrap path applies SQL files from an explicit SQL root.
+
+Default SQL root:
+- `./sql`
+
+Configurable embedded Postgres SQL root:
+- `embedded_postgres.sql_root`
+
+The runtime must not assume that the current working directory is always the repository root without making that assumption visible in config.
+
+The ordered bootstrap file list lives in `internal/db/bootstrap.go` and currently expects filenames relative to the configured SQL root.
+
 ## Identifier strategy
 
 The current runtime assumes:
@@ -202,5 +216,6 @@ Update this file whenever any of the following change:
 - runtime-facing table shape
 - identifier strategy
 - verify expectations
+- SQL bootstrap file ordering or SQL root behavior
 
 If the runtime contract changed and this file did not, the patch is incomplete.
