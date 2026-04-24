@@ -22,6 +22,9 @@ task_poll_interval_seconds = 5
 enable_task_rpc_server = false
 task_rpc_socket_path = "./artifacts/taskrpc/csse-tool-development-specialist-01.sock"
 
+[task_dispatch.remote_unit_sockets]
+# "other-specialist-id" = "./artifacts/taskrpc/other-specialist-id.sock"
+
 [embedded_postgres]
 data_dir = "./artifacts/embedded_postgres/csse-tool-development-specialist-01"
 port = 55432
