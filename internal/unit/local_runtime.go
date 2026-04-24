@@ -20,6 +20,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/runtime"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slots"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/slotsync"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/taskdispatch"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -88,6 +89,13 @@ func newLocalRuntime(spec Spec, cfg *config.AppConfig, database *pgxpool.Pool, l
 	hostRegistry := modelhost.NewSimulatedRegistry(hostPrefix(spec))
 	executionService := execution.NewService(logger, hostRegistry, registry)
 	runtimeService := runtime.NewService(cfg, slotLoader, store, harnessService, routingService, executionService, growthService, slotSyncService, logger)
+	if len(cfg.TaskDispatch.RemoteUnitSockets) > 0 {
+		dispatcher, err := taskdispatch.New(taskdispatch.Options{ParentUnitID: spec.UnitID, Resolver: taskdispatch.StaticSocketResolver(cfg.TaskDispatch.RemoteUnitSockets)})
+		if err != nil {
+			return nil, err
+		}
+		runtimeService.SetRemoteDispatcher(dispatcher)
+	}
 
 	return &LocalRuntime{
 		Spec:       spec,
