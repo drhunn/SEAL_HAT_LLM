@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/config"
@@ -29,6 +30,23 @@ type Task struct {
 	Prompt                      string
 }
 
+type RemoteDispatchResult struct {
+	TargetUnitID string
+	SocketPath   string
+	Status       string
+	ResultSummary string
+	OutputJSON   string
+	ArtifactRefs []string
+	Confidence   float64
+	Warnings     []string
+	Signals      []string
+	ErrorText    string
+}
+
+type RemoteDispatcher interface {
+	DispatchRemote(context.Context, Task) (*RemoteDispatchResult, error)
+}
+
 type TaskResult struct {
 	Task             Task
 	RetrievalResults []memory.RetrievalResult
@@ -48,15 +66,16 @@ type TaskReview struct {
 }
 
 type Service struct {
-	cfg       *config.AppConfig
-	loader    *slots.FilesystemLoader
-	store     *memory.PostgresStore
-	harness   *harness.Service
-	routing   *routing.Service
-	execution *execution.Service
-	growth    *growth.Service
-	slotSync  *slotsync.Service
-	logger    *slog.Logger
+	cfg              *config.AppConfig
+	loader           *slots.FilesystemLoader
+	store            *memory.PostgresStore
+	harness          *harness.Service
+	routing          *routing.Service
+	execution        *execution.Service
+	growth           *growth.Service
+	slotSync         *slotsync.Service
+	remoteDispatcher RemoteDispatcher
+	logger           *slog.Logger
 }
 
 func NewService(cfg *config.AppConfig, loader *slots.FilesystemLoader, store *memory.PostgresStore, harnessService *harness.Service, routingService *routing.Service, executionService *execution.Service, growthService *growth.Service, slotSyncService *slotsync.Service, logger *slog.Logger) *Service {
@@ -71,4 +90,11 @@ func NewService(cfg *config.AppConfig, loader *slots.FilesystemLoader, store *me
 		slotSync:  slotSyncService,
 		logger:    logger,
 	}
+}
+
+func (s *Service) SetRemoteDispatcher(dispatcher RemoteDispatcher) {
+	if s == nil {
+		return
+	}
+	s.remoteDispatcher = dispatcher
 }
