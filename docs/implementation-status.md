@@ -33,13 +33,15 @@ The Go side already has:
 - an explicit unit-owned store bootstrap abstraction with:
   - `shared_dsn` bootstrap support
   - an initial actual `embedded_postgres` bootstrap path using local PostgreSQL binaries
+  - embedded schema bootstrap through a reusable Go SQL-file runner
   - a bootstrapped local-runtime constructor now used by the main harness entrypoint
-  - embedded-store ownership locking, stale-lock reclaim, readiness ping checks, and idempotent stop behavior for the initial local lifecycle
+  - embedded-store ownership locking, stale-lock reclaim, readiness ping checks, schema bootstrap, and idempotent stop behavior for the initial local lifecycle
 - an initial `unit.Registry` that resolves the current unit and built-in known units for routing/execution target resolution
 - routing/execution target fields that now carry **unit-target metadata** and resolve known units through the registry before falling back to compatibility mapping
 - execution planning support for explicitly preferred **unit IDs** in addition to preferred executor aliases
 - routing support for explicitly preferred **unit IDs** in addition to executor-policy selection
 - startup-task construction and task-inbox parsing paths that now carry `PreferredUnitID` into live runtime task objects
+- runtime task processing now carries `PreferredUnitID` through routing and execution instead of dropping it
 - an initial Unix-domain-socket task RPC transport with typed request/response contracts, client/server support, and a runtime adapter that exposes `runtime.Service.ProcessTask` over the socket boundary
 - optional harness-side task RPC serving from `cmd/harness/main.go` when `runtime.enable_task_rpc_server` is enabled
 - route-episode persistence support for successful startup-task and inbox-task execution paths
@@ -48,7 +50,7 @@ The Go side already has:
 - growth staging support that now creates a **candidate artifact**, links the experiment to that candidate, and records the current artifact as the parent reference
 - specialist artifact event history support for startup registration, candidate growth staging, and oversight-triggered promotion/rollback event hooks
 - initial artifact lifecycle helpers that can promote a candidate artifact to current or roll it back through the experiment path
-- direct test coverage for preferred-unit execution planning, preferred-unit routing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, embedded-postgres ownership/readiness/cleanup behavior, and Unix-socket task RPC transport/runtime-adapter behavior
+- direct test coverage for preferred-unit execution planning, preferred-unit routing, full runtime preferred-unit task processing, oversight artifact-event hooks, unit store-bootstrap selection, config embedded-postgres defaults, unit spec store-mode derivation, embedded-postgres ownership/readiness/schema-bootstrap/cleanup behavior, and Unix-socket task RPC transport/runtime-adapter behavior
 
 ### SQL layer
 The SQL side already has:
@@ -63,6 +65,7 @@ The SQL side already has:
 - an artifact-ref column on `ability_growth_experiments` for linking staged growth work to the candidate artifact for that experiment
 - a specialist-artifact-events table for durable artifact lifecycle/event history
 - a candidate-artifact lifecycle migration that normalizes `active` -> `current` and enforces one current artifact per specialist
+- a reusable Go schema bootstrap runner that applies the same ordered SQL files as the verify bootstrap script
 - verify checks for one-current-artifact invariants and growth/artifact lifecycle alignment
 - seed and verify scripts
 
@@ -99,7 +102,7 @@ These paths exist, but they are intentionally small and not yet broad production
 - route-episode persistence on both success and failure paths through the current runtime wrappers rather than a fully centralized end-of-task hook
 - current/candidate artifact separation with candidate rows created during growth staging
 - artifact lifecycle history through event records plus narrow promotion/rollback helpers, rather than a full lifecycle state engine
-- initial embedded-postgres bootstrap support that still depends on local PostgreSQL binaries and lacks broader lifecycle management
+- initial embedded-postgres bootstrap support that still depends on local PostgreSQL binaries and now applies the repo SQL bootstrap sequence, but still lacks broader lifecycle supervision
 - initial task RPC transport that exposes specialist-side task execution over a local socket but does not yet provide a full parent-side distributed dispatcher
 
 ## Still scaffolded or partial
@@ -113,7 +116,7 @@ These areas are present in design and partially present in code, but not complet
 - deeper sub-agent orchestration
 - a deeper core task-processing hook for failed-task route episodes instead of the current wrapper seam
 - specialist artifact lifecycle beyond current/candidate separation, event history, and narrow promotion/rollback helpers
-- embedded Postgres lifecycle management beyond initial bootstrap, ownership locking, stale-lock reclaim, readiness checks, and stop behavior
+- embedded Postgres lifecycle management beyond initial bootstrap, ownership locking, stale-lock reclaim, readiness checks, schema bootstrap, and stop behavior
 - parent-side RPC dispatch and result orchestration across multiple model units
 
 ## Not implemented yet
