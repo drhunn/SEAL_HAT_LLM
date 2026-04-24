@@ -10,6 +10,7 @@ import (
 	"github.com/drhunn/SEAL_HAT_LLM/internal/execution"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/memory"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/modality"
+	"github.com/drhunn/SEAL_HAT_LLM/internal/modelhost"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/routing"
 	"github.com/drhunn/SEAL_HAT_LLM/internal/telemetry"
 )
@@ -80,6 +81,44 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 	if err := collector.Write(ctx, s.store, routingSignals...); err != nil {
 		warnings = append(warnings, fmt.Sprintf("persist routing signals: %v", err))
 		s.logger.Warn("persist routing signals failed", "task_id", task.ID, "err", err)
+	}
+
+	if shouldDispatchRemote(s.cfg, s.remoteDispatcher, routingDecision) {
+		remoteResult, remoteErr := s.remoteDispatcher.DispatchRemote(ctx, task)
+		executionResult := executionResultForRemoteDispatch(routingDecision, remoteResult)
+		executionReq := execution.Request{
+			TaskSummary:                 task.Summary,
+			TaskClass:                   task.Class,
+			PrimaryModality:             task.PrimaryModality,
+			SecondaryModalities:         task.SecondaryModalities,
+			CrossModalGroundingRequired: task.CrossModalGroundingRequired,
+			AllowTextOnlyFallback:       task.AllowTextOnlyFallback,
+			PreferredExecutor:           task.PreferredExecutor,
+			PreferredUnitID:             task.PreferredUnitID,
+			AssetRefs:                   task.AssetRefs,
+			Prompt:                      task.Prompt,
+		}
+		executionSignals := execution.SignalsForExecution(s.cfg.Runtime.SpecialistID, executionReq, executionResult, remoteErr, collector)
+		if err := collector.Write(ctx, signalStore, executionSignals...); err != nil {
+			return nil, fmt.Errorf("write remote execution signals to memory store: %w", err)
+		}
+		if err := collector.Write(ctx, s.store, executionSignals...); err != nil {
+			warnings = append(warnings, fmt.Sprintf("persist remote execution signals: %v", err))
+			s.logger.Warn("persist remote execution signals failed", "task_id", task.ID, "err", err)
+		}
+		allSignals := append(append([]telemetry.Signal{}, retrievalSignals...), append(routingSignals, executionSignals...)...)
+		result := &TaskResult{Task: task, RetrievalResults: retrievalResults, RoutingDecision: routingDecision, ExecutionResult: executionResult, Signals: allSignals, Warnings: warnings}
+		if remoteErr != nil {
+			if err := s.handleTaskOutcome(ctx, task, routingDecision, executionResult, remoteErr, allSignals); err != nil {
+				return nil, fmt.Errorf("handle task outcome: %w", err)
+			}
+			return result, fmt.Errorf("remote dispatch task %s: %w", task.ID, remoteErr)
+		}
+		if err := s.handleTaskOutcome(ctx, task, routingDecision, executionResult, nil, allSignals); err != nil {
+			return nil, fmt.Errorf("handle task outcome: %w", err)
+		}
+		s.logger.Info("task dispatched remotely", "task_id", task.ID, "target_unit_id", routingDecision.TargetUnitID, "socket_path", remoteResult.SocketPath)
+		return result, nil
 	}
 
 	executionReq := execution.Request{
@@ -176,6 +215,57 @@ func normalizeTask(task Task, cfg *config.AppConfig) Task {
 		task.AllowTextOnlyFallback = cfg.Runtime.AllowTextOnlyFallback
 	}
 	return task
+}
+
+func shouldDispatchRemote(cfg *config.AppConfig, dispatcher RemoteDispatcher, decision routing.Decision) bool {
+	if cfg == nil || dispatcher == nil {
+		return false
+	}
+	targetUnitID := strings.TrimSpace(decision.TargetUnitID)
+	if targetUnitID == "" || targetUnitID == strings.TrimSpace(cfg.Runtime.SpecialistID) {
+		return false
+	}
+	_, ok := cfg.TaskDispatch.RemoteUnitSockets[targetUnitID]
+	return ok
+}
+
+func executionResultForRemoteDispatch(decision routing.Decision, remote *RemoteDispatchResult) execution.Result {
+	status := ""
+	output := ""
+	metadata := map[string]string{"dispatch": "remote"}
+	if remote != nil {
+		status = remote.Status
+		output = firstNonEmptyString(remote.OutputJSON, remote.ResultSummary)
+		metadata["socket_path"] = remote.SocketPath
+		metadata["remote_status"] = remote.Status
+	}
+	return execution.Result{
+		Plan: execution.Plan{
+			ExecutionMode:  "remote_rpc",
+			ChosenExecutor: decision.ChosenTarget,
+			TargetUnitID:   decision.TargetUnitID,
+			TargetRole:     decision.TargetRole,
+			TargetModelRef: decision.TargetModelRef,
+			RequiresFusion: decision.RequiresFusion,
+			Notes:          "remote task rpc dispatch",
+		},
+		HostResult: modelhost.Result{
+			HostName: decision.TargetUnitID,
+			Executor: decision.ChosenTarget,
+			Output:   output,
+			Handled:  status == "ok",
+			Metadata: metadata,
+		},
+	}
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func impactForTaskSignals(signals []telemetry.Signal) string {
