@@ -101,9 +101,9 @@ func TestDispatchCallsResolvedClient(t *testing.T) {
 func TestDispatchReturnsPartialResultOnClientError(t *testing.T) {
 	client := &recordingClient{resp: taskrpc.RunTaskResponse{ProtocolVersion: taskrpc.ProtocolVersion, TaskID: "task-1", Status: "error", ErrorText: "boom"}, err: errors.New("boom")}
 	dispatcher, err := New(Options{
-		ParentUnitID:   "parent-1",
-		Resolver:       StaticSocketResolver{"spec-1": "/tmp/spec-1.sock"},
-		ClientFactory:  func(socketPath string) Client { return client },
+		ParentUnitID:  "parent-1",
+		Resolver:      StaticSocketResolver{"spec-1": "/tmp/spec-1.sock"},
+		ClientFactory: func(socketPath string) Client { return client },
 	})
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
