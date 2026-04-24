@@ -4,12 +4,18 @@ import (
 	"strings"
 
 	"github.com/drhunn/SEAL_HAT_LLM/internal/executors"
-	"github.com/drhunn/SEAL_HAT_LLM/internal/unit"
+)
+
+type Role string
+
+const (
+	RoleParent     Role = "parent"
+	RoleSpecialist Role = "specialist"
 )
 
 type Target struct {
 	UnitID       string
-	Role         unit.Role
+	Role         Role
 	ModelRef     string
 	ExecutorName string
 }
@@ -22,12 +28,12 @@ func ForExecutor(executorName string) Target {
 
 	target := Target{
 		UnitID:       name,
-		Role:         unit.RoleSpecialist,
+		Role:         RoleSpecialist,
 		ModelRef:     name,
 		ExecutorName: name,
 	}
 	if name == executors.ParentGeneralist.String() {
-		target.Role = unit.RoleParent
+		target.Role = RoleParent
 	}
 	return target
 }
