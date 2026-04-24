@@ -51,6 +51,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		PrimaryModality:             task.PrimaryModality,
 		SecondaryModalities:         task.SecondaryModalities,
 		CrossModalGroundingRequired: task.CrossModalGroundingRequired,
+		PreferredUnitID:             task.PreferredUnitID,
 	}
 	routingDecision := s.routing.DecideTask(ctx, routingInput)
 	if _, err := s.store.CreateRoutingAudit(ctx, memory.RoutingAuditInput{
@@ -89,6 +90,7 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 		CrossModalGroundingRequired: task.CrossModalGroundingRequired,
 		AllowTextOnlyFallback:       task.AllowTextOnlyFallback,
 		PreferredExecutor:           task.PreferredExecutor,
+		PreferredUnitID:             task.PreferredUnitID,
 		AssetRefs:                   task.AssetRefs,
 		Prompt:                      task.Prompt,
 	}
