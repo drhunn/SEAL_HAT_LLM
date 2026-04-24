@@ -37,7 +37,7 @@ The ordered bootstrap file list lives in `internal/db/bootstrap.go` and currentl
 
 The current runtime assumes:
 - UUIDs for the original base tables that generate them in SQL
-- text IDs for newer SEAL/DEN scaffold paths such as signals, proposals, growth plans, lineage nodes, and bundle versions
+- text IDs for newer SEAL/DEN scaffold paths such as signals, proposals, growth plans, lineage nodes, route episodes, and bundle versions
 
 Do not change identifier shape casually.
 If you change it, update both Go and SQL together.
@@ -74,6 +74,7 @@ If you change it, update both Go and SQL together.
 - `agent_core.promotion_decisions`
 - `agent_core.ability_ledgers`
 - `agent_core.ability_growth_experiments`
+- `agent_core.route_episodes`
 
 ## Runtime-facing SQL functions
 
@@ -173,6 +174,37 @@ The runtime expects fields for:
 - multi_specialist_review
 - notes
 
+### Route episode persistence
+The runtime expects to persist one route episode from the centralized task outcome hook for local and remote task outcomes.
+
+The write path expects fields for:
+- namespace
+- specialist_id
+- task_id
+- task_summary
+- task_class
+- primary_modality
+- chosen_target
+- target_unit_id
+- target_role
+- target_model_ref
+- chosen_executor
+- execution_mode
+- confidence
+- was_fallback
+- fallback_reason
+- needs_parent_review
+- requires_fusion
+- execution_handled
+- execution_host
+- status
+- error_text
+
+Current status values are:
+- `succeeded`
+- `failed`
+- `unhandled`
+
 ### Canonical slot bundle persistence
 The runtime expects:
 - text `id`
@@ -217,5 +249,6 @@ Update this file whenever any of the following change:
 - identifier strategy
 - verify expectations
 - SQL bootstrap file ordering or SQL root behavior
+- runtime-facing write-path behavior
 
 If the runtime contract changed and this file did not, the patch is incomplete.
