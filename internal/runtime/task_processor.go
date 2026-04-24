@@ -85,6 +85,9 @@ func (s *Service) ProcessTask(ctx context.Context, task Task) (*TaskResult, erro
 
 	if shouldDispatchRemote(s.cfg, s.remoteDispatcher, routingDecision) {
 		remoteResult, remoteErr := s.remoteDispatcher.DispatchRemote(ctx, task)
+		if remoteErr == nil && remoteResult == nil {
+			remoteErr = fmt.Errorf("remote dispatcher returned nil result")
+		}
 		executionResult := executionResultForRemoteDispatch(routingDecision, remoteResult)
 		executionReq := execution.Request{
 			TaskSummary:                 task.Summary,
