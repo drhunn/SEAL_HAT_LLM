@@ -82,10 +82,31 @@ func (d *Dispatcher) Dispatch(ctx context.Context, task runtime.Task) (*Result, 
 	}
 	req := RequestFromTask(d.parentUnitID, task)
 	resp, err := client.RunTask(ctx, req)
+	result := &Result{TargetUnitID: targetUnitID, SocketPath: socketPath, Request: req, Response: resp}
 	if err != nil {
-		return &Result{TargetUnitID: targetUnitID, SocketPath: socketPath, Request: req, Response: resp}, fmt.Errorf("dispatch task %q to unit %q: %w", task.ID, targetUnitID, err)
+		return result, fmt.Errorf("dispatch task %q to unit %q: %w", task.ID, targetUnitID, err)
 	}
-	return &Result{TargetUnitID: targetUnitID, SocketPath: socketPath, Request: req, Response: resp}, nil
+	return result, nil
+}
+
+func (d *Dispatcher) DispatchRemote(ctx context.Context, task runtime.Task) (*runtime.RemoteDispatchResult, error) {
+	result, err := d.Dispatch(ctx, task)
+	if result == nil {
+		return nil, err
+	}
+	remoteResult := &runtime.RemoteDispatchResult{
+		TargetUnitID:  result.TargetUnitID,
+		SocketPath:    result.SocketPath,
+		Status:        result.Response.Status,
+		ResultSummary: result.Response.ResultSummary,
+		OutputJSON:    result.Response.OutputJSON,
+		ArtifactRefs:  compactStrings(result.Response.ArtifactRefs),
+		Confidence:    result.Response.Confidence,
+		Warnings:      compactStrings(result.Response.Warnings),
+		Signals:       compactStrings(result.Response.Signals),
+		ErrorText:     strings.TrimSpace(result.Response.ErrorText),
+	}
+	return remoteResult, err
 }
 
 func RequestFromTask(parentUnitID string, task runtime.Task) taskrpc.RunTaskRequest {
