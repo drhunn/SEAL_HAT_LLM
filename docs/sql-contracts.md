@@ -37,7 +37,7 @@ The ordered bootstrap file list lives in `internal/db/bootstrap.go` and currentl
 
 The current runtime assumes:
 - UUIDs for the original base tables that generate them in SQL
-- text IDs for newer SEAL/DEN scaffold paths such as signals, proposals, growth plans, lineage nodes, route episodes, and bundle versions
+- text IDs for newer SEAL/DEN scaffold paths such as signals, proposals, growth plans, lineage nodes, route episodes, artifact events, and bundle versions
 
 Do not change identifier shape casually.
 If you change it, update both Go and SQL together.
@@ -75,6 +75,8 @@ If you change it, update both Go and SQL together.
 - `agent_core.ability_ledgers`
 - `agent_core.ability_growth_experiments`
 - `agent_core.route_episodes`
+- `agent_core.specialist_artifacts`
+- `agent_core.specialist_artifact_events`
 
 ## Runtime-facing SQL functions
 
@@ -205,6 +207,40 @@ Current status values are:
 - `failed`
 - `unhandled`
 
+### Specialist artifact lifecycle
+The runtime expects `specialist_artifacts.activation_status` to use the enforced artifact lifecycle states:
+- `defined`
+- `candidate`
+- `current`
+- `rolled_back`
+- `rejected`
+- `archived`
+
+Allowed transitions are enforced in `internal/lifecycle`:
+- `defined -> candidate`
+- `defined -> archived`
+- `candidate -> current`
+- `candidate -> rejected`
+- `candidate -> rolled_back`
+- `candidate -> archived`
+- `current -> rolled_back`
+- `current -> archived`
+- `rolled_back -> archived`
+- `rejected -> archived`
+
+Promotion to `current` archives any prior current artifact for the same specialist before setting the candidate current.
+The partial unique index on `specialist_artifacts (specialist_id) WHERE activation_status='current'` remains the database backstop for the one-current-artifact invariant.
+
+Every transition writes a row to `specialist_artifact_events` with:
+- event_id
+- artifact_id
+- specialist_id
+- event_type
+- experiment_id when provided
+- actor
+- reason
+- metadata
+
 ### Canonical slot bundle persistence
 The runtime expects:
 - text `id`
@@ -250,5 +286,6 @@ Update this file whenever any of the following change:
 - verify expectations
 - SQL bootstrap file ordering or SQL root behavior
 - runtime-facing write-path behavior
+- artifact lifecycle states or transitions
 
 If the runtime contract changed and this file did not, the patch is incomplete.
